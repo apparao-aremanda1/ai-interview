@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HR Dashboard | Kovi AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #0b0f19; }
+  </style>
+</head>
+<body class="text-slate-100 min-h-screen">
+
+  <!-- Top Navbar -->
+  <header class="border-b border-slate-800 bg-[#0b0f19]/90 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="index.html" class="flex items-center space-x-3">
+          <div class="h-8 w-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white text-sm">K</div>
+          <span class="text-lg font-bold text-white">Kovi<span class="text-cyan-400">.ai</span></span>
+        </a>
+        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded ml-2">HR Portal</span>
+      </div>
+      <a href="index.html" class="text-sm text-slate-400 hover:text-white transition flex items-center gap-1">
+        &larr; Back to Home
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
+    
+    <!-- Top Stats Row -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-5">
+        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Completed Interviews</p>
+        <p class="text-2xl font-bold text-white mt-1">24</p>
+      </div>
+      <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-5">
+        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Average Tech Score</p>
+        <p class="text-2xl font-bold text-cyan-400 mt-1">7.8 / 10</p>
+      </div>
+      <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-5">
+        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Recommended for Hire</p>
+        <p class="text-2xl font-bold text-emerald-400 mt-1">9 Candidates</p>
+      </div>
+    </div>
+
+    <!-- Create Interview Section -->
+    <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-6">
+      <h2 class="text-lg font-semibold text-white mb-4">Create New AI Interview Session</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Candidate Name</label>
+          <input type="text" placeholder="e.g. John Doe" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Candidate Email</label>
+          <input type="email" placeholder="e.g. john@example.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Job Description (JD)</label>
+          <textarea rows="4" placeholder="Paste the role requirements, required tech stack, and responsibilities..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-cyan-500"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Candidate Resume Text / Summary</label>
+          <textarea rows="4" placeholder="Paste candidate's past work history, project highlights, or resume text..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-cyan-500"></textarea>
+        </div>
+      </div>
+
+      <button class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-5 py-2.5 rounded-lg text-sm transition shadow-lg shadow-cyan-500/20">
+        Generate Interview Link
+      </button>
+    </div>
+
+    <!-- Candidate Scorecard Table -->
+    <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-6">
+      <h2 class="text-lg font-semibold text-white mb-4">Recent Candidate Scorecards</h2>
+      
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-400">
+          <thead class="text-xs uppercase bg-slate-950 text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="py-3 px-4">Candidate</th>
+              <th class="py-3 px-4">Role</th>
+              <th class="py-3 px-4">Score</th>
+              <th class="py-3 px-4">AI Recommendation</th>
+              <th class="py-3 px-4 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800">
+            <tr>
+              <td class="py-3.5 px-4 font-medium text-white">Rahul Sharma</td>
+              <td class="py-3.5 px-4">Sr. Python Backend</td>
+              <td class="py-3.5 px-4"><span class="text-emerald-400 font-semibold">8.5 / 10</span></td>
+              <td class="py-3.5 px-4"><span class="bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded text-xs">Strong Hire</span></td>
+              <td class="py-3.5 px-4 text-right"><button class="text-cyan-400 hover:underline text-xs">View Report</button></td>
+            </tr>
+            <tr>
+              <td class="py-3.5 px-4 font-medium text-white">Priya Patel</td>
+              <td class="py-3.5 px-4">Full Stack Engineer</td>
+              <td class="py-3.5 px-4"><span class="text-amber-400 font-semibold">6.2 / 10</span></td>
+              <td class="py-3.5 px-4"><span class="bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded text-xs">Consider</span></td>
+              <td class="py-3.5 px-4 text-right"><button class="text-cyan-400 hover:underline text-xs">View Report</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</body>
+</html>
