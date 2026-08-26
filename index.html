@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kovi AI | Autonomous Technical Screening</title>
+  <title>Kovi AI | Autonomous Technical Screening & Proctoring</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -11,15 +11,15 @@
     .grid-bg {
       background-size: 40px 40px;
       background-image: 
-        linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
     }
   </style>
 </head>
 <body class="text-slate-100 min-h-screen flex flex-col grid-bg">
 
   <!-- Navigation Bar -->
-  <header class="border-b border-slate-800 bg-[#0b0f19]/80 backdrop-blur-md sticky top-0 z-50">
+  <header class="border-b border-slate-800/80 bg-[#0b0f19]/90 backdrop-blur-md sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
       <div class="flex items-center space-x-3">
         <div class="h-9 w-9 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-lg text-white shadow-lg shadow-cyan-500/20">K</div>
@@ -34,54 +34,92 @@
   </header>
 
   <!-- Hero Section -->
-  <main class="flex-grow flex items-center justify-center py-20 px-6">
-    <div class="max-w-4xl mx-auto text-center space-y-8">
+  <main class="flex-grow flex items-center justify-center py-16 px-6">
+    <div class="max-w-5xl mx-auto text-center space-y-8">
       
-      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-950/40 text-cyan-300 text-xs font-medium tracking-wide">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-950/40 text-cyan-300 text-xs font-semibold tracking-wide uppercase">
         <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-        AI-POWERED TECHNICAL SCREENING AGENT
+        Autonomous Technical Screening & Anti-Cheat Engine
       </div>
 
-      <h1 class="text-5xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
-        Autonomous Voice Interviews <br />
+      <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
+        Smarter Technical Interviews <br />
         <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400">
-          Tailored to Job & Resume
+          Proctored & Tailored by AI
         </span>
       </h1>
 
-      <p class="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-        Upload your Job Description and candidate's resume. Our conversational AI agent conducts deep technical interviews and delivers instant structured evaluation scorecards.
+      <p class="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+        Upload your Job Description and candidate's resume. Our voice agent runs hyper-personalized technical screenings with real-time video proctoring and cheat detection.
       </p>
 
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-        <a href="dashboard.html" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-base transition-all shadow-lg shadow-blue-500/30 text-center">
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+        <a href="dashboard.html" class="px-8 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-base transition-all shadow-lg shadow-blue-500/30 text-center">
           Open HR Portal
         </a>
       </div>
 
-      <!-- Feature Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-16 text-left">
-        <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800">
-          <div class="text-cyan-400 text-2xl mb-3">📄</div>
-          <h3 class="text-white font-semibold text-lg mb-1">Resume Parsing</h3>
-          <p class="text-slate-400 text-sm">Extracts projects and tech stack automatically to construct targeted questions.</p>
+      <!-- Feature Grid (4 Pillars) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 pt-12 text-left">
+        
+        <!-- Card 1: JD & Resume -->
+        <div class="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 transition-all flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-lg bg-cyan-950/60 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-xl mb-4">
+              📄
+            </div>
+            <h3 class="text-white font-semibold text-base mb-1.5">JD & Resume Parsing</h3>
+            <p class="text-slate-400 text-xs leading-relaxed">
+              Extracts tech stacks and past project architecture to construct tailored, role-specific questions.
+            </p>
+          </div>
         </div>
-        <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800">
-          <div class="text-cyan-400 text-2xl mb-3">🎙️</div>
-          <h3 class="text-white font-semibold text-lg mb-1">Voice AI Screening</h3>
-          <p class="text-slate-400 text-sm">Natural, low-latency spoken conversations with real-time technical probing.</p>
+
+        <!-- Card 2: Voice AI -->
+        <div class="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 transition-all flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-lg bg-blue-950/60 border border-blue-500/30 flex items-center justify-center text-blue-400 text-xl mb-4">
+              🎙️
+            </div>
+            <h3 class="text-white font-semibold text-base mb-1.5">Voice AI Screening</h3>
+            <p class="text-slate-400 text-xs leading-relaxed">
+              Real-time conversational voice dialogue with adaptive follow-ups and deep technical probing.
+            </p>
+          </div>
         </div>
-        <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800">
-          <div class="text-cyan-400 text-2xl mb-3">📊</div>
-          <h3 class="text-white font-semibold text-lg mb-1">Instant Scorecards</h3>
-          <p class="text-slate-400 text-sm">1-10 technical ratings, hiring recommendations, and full transcripts delivered instantly.</p>
+
+        <!-- Card 3: Anti-Cheat & Camera -->
+        <div class="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 transition-all flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-lg bg-indigo-950/60 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-xl mb-4">
+              👁️
+            </div>
+            <h3 class="text-white font-semibold text-base mb-1.5">Anti-Cheat Proctoring</h3>
+            <p class="text-slate-400 text-xs leading-relaxed">
+              Live webcam monitoring with gaze tracking, multi-person detection, and tab-switch logging.
+            </p>
+          </div>
         </div>
+
+        <!-- Card 4: Scorecards -->
+        <div class="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 transition-all flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-lg bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xl mb-4">
+              📊
+            </div>
+            <h3 class="text-white font-semibold text-base mb-1.5">Instant Scorecards</h3>
+            <p class="text-slate-400 text-xs leading-relaxed">
+              Objective 1–10 scores, proctoring flags, key strengths, and full transcripts delivered directly to HR.
+            </p>
+          </div>
+        </div>
+
       </div>
 
     </div>
   </main>
 
-  <footer class="border-t border-slate-800 py-6 text-center text-slate-500 text-xs">
+  <footer class="border-t border-slate-800/80 py-6 text-center text-slate-500 text-xs">
     © 2026 Kovi.ai. All rights reserved.
   </footer>
 
