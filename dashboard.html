@@ -7,61 +7,61 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; } /* Light slate background */
-    /* Loading spinner animation updated for light mode */
+    body { font-family: 'Inter', sans-serif; background-color: #ffffff; } /* Pure White Background */
+    /* Loading spinner animation */
     .loader {
       border: 3px solid rgba(0, 0, 0, 0.1);
-      border-top-color: #3b82f6; /* Blue spinner */
+      border-top-color: #2563eb; /* Blue spinner */
       border-radius: 50%;
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       animation: spin 1s linear infinite;
       display: none;
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
-<body class="text-slate-800 min-h-screen">
+<body class="text-slate-900 min-h-screen">
 
   <!-- Top Navbar -->
-  <header class="border-b border-slate-200 bg-white/90 sticky top-0 z-50 shadow-sm backdrop-blur-md">
+  <header class="border-b border-slate-200 bg-white sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
       <div class="flex items-center space-x-3">
         <a href="index.html" class="flex items-center space-x-3">
-          <div class="h-8 w-8 rounded-lg bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-white text-sm">K</div>
+          <div class="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white text-sm">K</div>
           <span class="text-lg font-bold text-slate-900">Kovi<span class="text-blue-600">.ai</span></span>
         </a>
-        <span class="text-xs bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded ml-2 font-medium">HR Dashboard</span>
+        <span class="text-xs bg-slate-100 text-slate-600 border border-slate-200 px-2 py-1 rounded-md font-medium">HR Dashboard</span>
       </div>
-      <a href="index.html" class="text-sm text-slate-500 hover:text-slate-800 transition flex items-center gap-1 font-medium">
+      <a href="index.html" class="text-sm text-slate-500 hover:text-blue-600 transition flex items-center gap-1 font-medium">
         &larr; Back to Home
       </a>
     </div>
   </header>
 
   <!-- Main Container -->
-  <main class="max-w-4xl mx-auto px-6 py-10 space-y-8">
+  <main class="max-w-4xl mx-auto px-6 py-10 space-y-10">
 
     <!-- Upload & Parse Section -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
       
       <!-- JD Upload Box -->
-      <div class="bg-white border-2 border-dashed border-slate-300 rounded-xl p-5 flex flex-col items-center justify-center text-center hover:border-blue-400 transition shadow-sm">
-        <div class="text-3xl mb-2">📄</div>
-        <h3 class="text-slate-800 font-semibold text-sm mb-1">Step 1: Upload Job Description</h3>
-        <p class="text-slate-500 text-xs mb-4">Auto-fill role, seniority & tech stack</p>
-        <button id="btnParseJD" onclick="simulateParseJD()" class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-semibold px-4 py-2 rounded-lg transition">
+      <div class="bg-white border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-blue-500 hover:bg-blue-50/30 transition">
+        <div class="text-3xl mb-3">📄</div>
+        <h3 class="text-slate-900 font-bold text-sm mb-1">Step 1: Upload Job Description</h3>
+        <p class="text-slate-500 text-xs mb-5">Auto-fill role, seniority & tech stack</p>
+        <button id="btnParseJD" onclick="simulateParseJD()" class="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold px-5 py-2.5 rounded-lg transition">
           <div id="loaderJD" class="loader"></div>
           <span id="textJD">Upload & Parse JD</span>
         </button>
       </div>
 
       <!-- Resume Upload Box -->
-      <div class="bg-white border-2 border-dashed border-slate-300 rounded-xl p-5 flex flex-col items-center justify-center text-center hover:border-blue-400 transition shadow-sm">
-        <div class="text-3xl mb-2">🧑‍💻</div>
-        <h3 class="text-slate-800 font-semibold text-sm mb-1">Step 2: Upload Candidate Resume</h3>
-        <p class="text-slate-500 text-xs mb-4">Auto-fill candidate name & contact info</p>
-        <button id="btnParseResume" onclick="simulateParseResume()" class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-semibold px-4 py-2 rounded-lg transition">
+      <div class="bg-white border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-blue-500 hover:bg-blue-50/30 transition">
+        <div class="text-3xl mb-3">🧑‍💻</div>
+        <h3 class="text-slate-900 font-bold text-sm mb-1">Step 2: Upload Candidate Resume</h3>
+        <p class="text-slate-500 text-xs mb-5">Auto-fill candidate name & contact info</p>
+        <button id="btnParseResume" onclick="simulateParseResume()" class="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold px-5 py-2.5 rounded-lg transition">
           <div id="loaderResume" class="loader"></div>
           <span id="textResume">Upload & Parse Resume</span>
         </button>
@@ -70,51 +70,52 @@
     </div>
 
     <!-- The Custom AI Interview Engine Form -->
-    <div class="bg-white border border-slate-200 rounded-2xl p-8 shadow-md">
+    <!-- Added a soft, wide shadow so the form pops off the white background -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
       <div class="text-center mb-8">
-        <h2 class="text-xl font-bold text-slate-900">Custom AI Interview Engine</h2>
-        <p class="text-slate-500 text-xs mt-1">Review auto-filled parameters and click 'Start Interview'.</p>
+        <h2 class="text-2xl font-extrabold text-slate-900">Custom AI Interview Engine</h2>
+        <p class="text-slate-500 text-sm mt-1.5">Review auto-filled parameters and click 'Start Interview'.</p>
       </div>
 
-      <div class="space-y-5">
+      <div class="space-y-6">
         
         <!-- Row 1 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Job Role</label>
-            <input type="text" id="jobRole" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
+            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Job Role</label>
+            <input type="text" id="jobRole" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition" />
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Hiring Manager Email</label>
-            <input type="email" id="hmEmail" value="apparaoareamanda@gmail.com" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
+            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Hiring Manager Email</label>
+            <input type="email" id="hmEmail" value="apparaoareamanda@gmail.com" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition" />
           </div>
         </div>
 
         <!-- Row 2 -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 border-t border-slate-200 pt-5">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-slate-100 pt-6">
           <div>
-            <label class="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-1.5">Candidate Name</label>
-            <input type="text" id="candidateName" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
+            <label class="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Candidate Name</label>
+            <input type="text" id="candidateName" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition" />
           </div>
           <div>
-            <label class="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-1.5">Mobile #</label>
-            <input type="text" id="candidateMobile" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
+            <label class="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Mobile #</label>
+            <input type="text" id="candidateMobile" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition" />
           </div>
           <div>
-            <label class="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-1.5">Mail ID</label>
-            <input type="email" id="candidateEmail" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
+            <label class="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Mail ID</label>
+            <input type="email" id="candidateEmail" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition" />
           </div>
         </div>
 
         <!-- Row 3 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Interviewer Name (AI)</label>
-            <input type="text" id="aiName" value="Badri" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
+            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Interviewer Name (AI)</label>
+            <input type="text" id="aiName" value="Badri" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition" />
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Designation / Seniority</label>
-            <select id="seniority" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition shadow-sm">
+            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Designation / Seniority</label>
+            <select id="seniority" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition">
               <option value="">Select...</option>
               <option value="Software Engineer (SE)">Software Engineer (SE)</option>
               <option value="Senior Software Engineer (SSE)">Senior Software Engineer (SSE)</option>
@@ -125,8 +126,8 @@
 
         <!-- Row 4 -->
         <div>
-          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Interview Type</label>
-          <select id="roundType" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition shadow-sm">
+          <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Interview Type</label>
+          <select id="roundType" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition">
             <option value="">Select...</option>
             <option value="Technical Deep Dive">Technical Deep Dive</option>
             <option value="System Design">System Design</option>
@@ -135,15 +136,15 @@
 
         <!-- Row 5 -->
         <div>
-          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tech Stack & Key Topics (Comma Separated)</label>
-          <input type="text" id="techStack" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
+          <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Tech Stack & Key Topics (Comma Separated)</label>
+          <input type="text" id="techStack" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition" />
         </div>
 
         <!-- Row 6 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 items-end pt-2">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end pt-3">
           <div>
-            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Interviewer Voice</label>
-            <select id="voice" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition shadow-sm">
+            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Interviewer Voice</label>
+            <select id="voice" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition">
               <option value="">Select Voice...</option>
               <option value="Indian Voice (English)">Indian Voice (English)</option>
               <option value="US Female (English)">US Female (English)</option>
@@ -151,7 +152,7 @@
             </select>
           </div>
           
-          <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition shadow-md shadow-blue-500/30">
+          <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-md shadow-blue-500/20">
             Start Interview
           </button>
         </div>
@@ -162,39 +163,37 @@
   </main>
 
   <script>
-    // These functions simulate sending the JD/Resume to your FastAPI backend
     function simulateParseJD() {
       const loader = document.getElementById('loaderJD');
       const text = document.getElementById('textJD');
+      const btn = document.getElementById('btnParseJD');
       
       loader.style.display = 'block';
       text.innerText = 'Parsing with AI...';
 
-      // Simulate a 1.5 second network request to your Python backend
       setTimeout(() => {
         document.getElementById('jobRole').value = 'Backend Developer';
         document.getElementById('seniority').value = 'Software Engineer (SE)';
-        document.getElementById('roundType').value = 'Technical Deep Dive'; // Updated to match new option
+        document.getElementById('roundType').value = 'Technical Deep Dive';
         document.getElementById('techStack').value = 'Python, FastAPI, LangGraph, PostgreSQL';
         document.getElementById('voice').value = 'Indian Voice (English)';
         
         loader.style.display = 'none';
         text.innerText = 'JD Parsed Successfully ✅';
         
-        const btn = document.getElementById('btnParseJD');
-        btn.classList.remove('bg-slate-100', 'text-slate-700', 'hover:bg-slate-200');
-        btn.classList.add('bg-emerald-500', 'text-white', 'hover:bg-emerald-600', 'border-emerald-600');
+        // Crisp green success state for the button
+        btn.className = 'flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-5 py-2.5 rounded-lg transition';
       }, 1500);
     }
 
     function simulateParseResume() {
       const loader = document.getElementById('loaderResume');
       const text = document.getElementById('textResume');
+      const btn = document.getElementById('btnParseResume');
       
       loader.style.display = 'block';
       text.innerText = 'Extracting data...';
 
-      // Simulate a 1.5 second network request to your Python backend
       setTimeout(() => {
         document.getElementById('candidateName').value = 'John Doe';
         document.getElementById('candidateMobile').value = '+91 98765 43210';
@@ -203,9 +202,8 @@
         loader.style.display = 'none';
         text.innerText = 'Resume Parsed Successfully ✅';
         
-        const btn = document.getElementById('btnParseResume');
-        btn.classList.remove('bg-slate-100', 'text-slate-700', 'hover:bg-slate-200');
-        btn.classList.add('bg-emerald-500', 'text-white', 'hover:bg-emerald-600', 'border-emerald-600');
+        // Crisp green success state for the button
+        btn.className = 'flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-5 py-2.5 rounded-lg transition';
       }, 1500);
     }
   </script>
