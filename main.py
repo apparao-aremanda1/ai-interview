@@ -6,6 +6,7 @@ from typing import Optional, List
 from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, EmailStr
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
@@ -128,6 +129,17 @@ def get_current_account(credentials: HTTPAuthorizationCredentials = Depends(secu
 # ==========================================
 # Authentication Endpoints
 # ==========================================
+@app.get("/")
+def serve_home():
+    return FileResponse("index.html")
+
+@app.get("/auth.html")
+def serve_auth():
+    return FileResponse("auth.html")
+
+@app.get("/dashboard.html")
+def serve_dashboard():
+    return FileResponse("dashboard.html")
 
 @app.post("/api/auth/signup", response_model=TokenResponse)
 def signup(payload: SignUpRequest):
