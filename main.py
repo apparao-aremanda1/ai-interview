@@ -49,7 +49,7 @@ app.add_middleware(
 
 # Anthropic Claude 3 Haiku Model
 llm = ChatAnthropic(
-    model="anthropic/claude-haiku-4-5",
+    model="claude-haiku-4-5",
     api_key=ANTHROPIC_API_KEY,
     temperature=0
 )
@@ -73,17 +73,18 @@ class TokenResponse(BaseModel):
     branch_name: str
     email: str
 
-class JDParsedData(BaseModel):
-    job_id: str = Field(description="A unique job reference code, e.g., 'JD-101' or 'REQ-9042'. If missing in text, create a sensible short code.")
-    job_role: str = Field(description="The primary job title, e.g., 'Senior Backend Engineer'")
-    seniority: str = Field(description="Seniority level, e.g., 'Software Engineer (SE)', 'Senior Software Engineer (SSE)', or 'Lead Engineer'")
-    interview_type: str = Field(description="Type of interview, e.g., 'Technical Deep Dive' or 'System Design'")
-    tech_stack: str = Field(description="Comma-separated list of required tools, frameworks, and languages.")
 
-class ResumeParsedData(BaseModel):
-    candidate_name: str = Field(description="Full name of the candidate")
-    mobile_number: str = Field(description="Contact phone number")
-    email_id: str = Field(description="Email address of the candidate")
+class JDParsedData(BaseModel):
+    job_id: str = Field(description="A unique job reference code, e.g., 'JD-AI-101'")
+    job_role: str = Field(description="The primary job title, e.g., 'Senior AI Engineer'")
+    seniority: str = Field(description="Seniority level, e.g., 'Senior / Lead Engineer'")
+    interview_type: str = Field(description="Type of interview, e.g., 'Technical Deep Dive'")
+    tech_stack: str = Field(description="Comma-separated list of required tools and languages.")
+    persona: str = Field(description="Interviewer persona tone, e.g., 'Strict Technical Lead' or 'Friendly Mentor'")
+    passing_score: float = Field(description="Minimum passing score out of 10, default to 7.5 if not specified.")
+    skills_to_test: str = Field(description="Core competencies or skills to test.")
+    must_questions: str = Field(description="Mandatory technical questions that must be asked during the interview.")
+
 
 class SaveJDRequest(BaseModel):
     job_id: str
@@ -92,6 +93,16 @@ class SaveJDRequest(BaseModel):
     interview_type: Optional[str] = ""
     tech_stack: Optional[str] = ""
     interviewer_voice: Optional[str] = "Professional Female (Emma)"
+    persona: Optional[str] = "Strict Technical Lead"
+    passing_score: Optional[float] = 7.0
+    skills_to_test: Optional[str] = ""
+    must_questions: Optional[str] = ""
+
+
+class ResumeParsedData(BaseModel):
+    candidate_name: str = Field(description="Full name of the candidate")
+    mobile_number: str = Field(description="Contact phone number")
+    email_id: str = Field(description="Email address of the candidate")
 
 
 # --- Helper Utilities ---
@@ -242,21 +253,24 @@ async def parse_resume(file: UploadFile = File(...), current_account: dict = Dep
 # ==========================================
 # JD & Candidate Database Operations
 # ==========================================
-
 @app.post("/api/jobs")
 def save_job(payload: SaveJDRequest, current_account: dict = Depends(get_current_account)):
     account_id = current_account["account_id"]
     with engine.connect() as conn:
         query = text("""
-            INSERT INTO job_descriptions (job_id, account_id, job_role, seniority, interview_type, tech_stack, interviewer_voice)
-            VALUES (:jid, :aid, :role, :sen, :itype, :tech, :voice)
+            INSERT INTO job_descriptions (job_id, account_id, job_role, seniority, interview_type, tech_stack, interviewer_voice, persona, passing_score, skills_to_test, must_questions)
+            VALUES (:jid, :aid, :role, :sen, :itype, :tech, :voice, :persona, :score, :skills, :questions)
             ON CONFLICT (account_id, job_id) 
             DO UPDATE SET 
                 job_role = EXCLUDED.job_role,
                 seniority = EXCLUDED.seniority,
                 interview_type = EXCLUDED.interview_type,
                 tech_stack = EXCLUDED.tech_stack,
-                interviewer_voice = EXCLUDED.interviewer_voice
+                interviewer_voice = EXCLUDED.interviewer_voice,
+                persona = EXCLUDED.persona,
+                passing_score = EXCLUDED.passing_score,
+                skills_to_test = EXCLUDED.skills_to_test,
+                must_questions = EXCLUDED.must_questions
         """)
         conn.execute(query, {
             "jid": payload.job_id,
@@ -265,10 +279,15 @@ def save_job(payload: SaveJDRequest, current_account: dict = Depends(get_current
             "sen": payload.seniority,
             "itype": payload.interview_type,
             "tech": payload.tech_stack,
-            "voice": payload.interviewer_voice
+            "voice": payload.interviewer_voice,
+            "persona": payload.persona,
+            "score": payload.passing_score,
+            "skills": payload.skills_to_test,
+            "questions": payload.must_questions
         })
         conn.commit()
-    return {"message": f"Job {payload.job_id} saved successfully"}
+    return {"message": f"Job {payload.job_id} saved successfully with passing score {payload.passing_score}"}
+
 
 @app.get("/api/jobs")
 def list_jobs(current_account: dict = Depends(get_current_account)):

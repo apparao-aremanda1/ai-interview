@@ -1,261 +1,368 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HR Dashboard | Kovi AI</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Inter', sans-serif; background-color: #ffffff; } /* Pure White Background */
-    /* Loading spinner animation */
-    .loader {
-      border: 3px solid rgba(0, 0, 0, 0.1);
-      border-top-color: #2563eb; /* Blue spinner */
-      border-radius: 50%;
-      width: 16px;
-      height: 16px;
-      animation: spin 1s linear infinite;
-      display: none;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Dashboard - AI Interview Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0b0f19; }
+        .grid-bg {
+            background-size: 40px 40px;
+            background-image:
+                linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+        }
+    </style>
 </head>
-<body class="text-slate-900 min-h-screen">
+<body class="text-slate-100 min-h-screen flex flex-col grid-bg">
 
-  <!-- Top Navbar -->
-  <header class="border-b border-slate-200 bg-white sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <a href="index.html" class="flex items-center space-x-3">
-          <div class="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white text-sm">K</div>
-          <span class="text-lg font-bold text-slate-900">Kovi<span class="text-blue-600">.ai</span></span>
-        </a>
-        <span class="text-xs bg-slate-100 text-slate-600 border border-slate-200 px-2 py-1 rounded-md font-medium">HR Dashboard</span>
-      </div>
-      <a href="index.html" class="text-sm text-slate-500 hover:text-blue-600 transition flex items-center gap-1 font-medium">
-        &larr; Back to Home
-      </a>
-    </div>
-  </header>
+    <!-- Top Navigation -->
+    <header class="border-b border-slate-800/80 bg-[#0b0f19]/90 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="h-9 w-9 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-lg text-white shadow-lg shadow-cyan-500/20">K</div>
+                <div>
+                    <span class="text-lg font-bold tracking-tight text-white">Kovi<span class="text-cyan-400">.ai</span></span>
+                    <span class="text-xs text-slate-400 ml-2 px-2 py-0.5 rounded bg-slate-800 border border-slate-700" id="branchBadge">Loading...</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-slate-300" id="userEmail">...</span>
+                <button onclick="logout()" class="px-4 py-2 rounded-lg bg-red-950/40 border border-red-800/60 hover:bg-red-900/40 text-red-300 text-xs font-semibold transition">
+                    Log Out
+                </button>
+            </div>
+        </div>
+    </header>
 
-  <!-- Main Container -->
-  <main class="max-w-4xl mx-auto px-6 py-10 space-y-10">
+    <!-- Main Content Hub -->
+    <main class="flex-grow max-w-7xl mx-auto w-full p-6 space-y-8">
 
-    <!-- Upload & Parse Section -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-      
-      <!-- JD Upload Box -->
-      <div class="bg-white border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-blue-500 hover:bg-blue-50/30 transition">
-        <div class="text-3xl mb-3">📄</div>
-        <h3 class="text-slate-900 font-bold text-sm mb-1">Step 1: Upload Job Description</h3>
-        <p class="text-slate-500 text-xs mb-5">Auto-fill role, seniority & tech stack</p>
-        <button id="btnParseJD" onclick="simulateParseJD()" class="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold px-5 py-2.5 rounded-lg transition">
-          <div id="loaderJD" class="loader"></div>
-          <span id="textJD">Upload & Parse JD</span>
-        </button>
-      </div>
+        <!-- Action Banner / JD Upload Section -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <h2 class="text-lg font-bold text-white mb-2">Create Job Description & Launch Screening</h2>
+            <p class="text-sm text-slate-400 mb-6">Upload a Job Description (PDF or Text). Claude will extract the tech stack and requirements instantly.</p>
 
-      <!-- Resume Upload Box -->
-      <div class="bg-white border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-blue-500 hover:bg-blue-50/30 transition">
-        <div class="text-3xl mb-3">🧑‍💻</div>
-        <h3 class="text-slate-900 font-bold text-sm mb-1">Step 2: Upload Candidate Resume</h3>
-        <p class="text-slate-500 text-xs mb-5">Auto-fill candidate name & contact info</p>
-        <button id="btnParseResume" onclick="simulateParseResume()" class="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold px-5 py-2.5 rounded-lg transition">
-          <div id="loaderResume" class="loader"></div>
-          <span id="textResume">Upload & Parse Resume</span>
-        </button>
-      </div>
-
-    </div>
-
-    <!-- The Custom AI Interview Engine Form -->
-    <!-- Added a soft, wide shadow so the form pops off the white background -->
-    <div class="bg-white border border-slate-200 rounded-2xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-      <div class="text-center mb-8">
-        <h2 class="text-2xl font-extrabold text-slate-900">Custom AI Interview Engine</h2>
-        <p class="text-slate-500 text-sm mt-1.5">Review auto-filled parameters and click 'Start Interview'.</p>
-      </div>
-
-      <div class="space-y-6">
-        
-        <!-- Row 1 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Job Role</label>
-            <input type="text" id="jobRole" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition" />
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Hiring Manager Email</label>
-            <input type="email" id="hmEmail" value="apparaoareamanda@gmail.com" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition" />
-          </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Select JD File</label>
+                    <input type="file" id="jdFile" accept=".pdf,.txt" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-300 file:mr-4 file:py-1 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer">
+                </div>
+                <div>
+                    <button onclick="parseAndSaveJD()" id="parseBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-4 rounded-xl transition shadow-lg shadow-indigo-600/30 text-sm">
+                        Parse & Create JD
+                    </button>
+                </div>
+            </div>
+            <div id="parseAlert" class="hidden mt-4 p-3 rounded-lg text-sm font-medium"></div>
         </div>
 
-        <!-- Row 2 -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-slate-100 pt-6">
-          <div>
-            <label class="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Candidate Name</label>
-            <input type="text" id="candidateName" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition" />
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Mobile #</label>
-            <input type="text" id="candidateMobile" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition" />
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Mail ID</label>
-            <input type="email" id="candidateEmail" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition" />
-          </div>
+        <!-- Active JDs List Section -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-bold text-white">Active Branch Job Openings</h3>
+                <button onclick="loadJobs()" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">Refresh List</button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                            <th class="py-3 px-4">Job ID & Role</th>
+                            <th class="py-3 px-4">Seniority</th>
+                            <th class="py-3 px-4">Interview Type</th>
+                            <th class="py-3 px-4">Tech Stack</th>
+                            <th class="py-3 px-4">Candidates</th>
+                            <th class="py-3 px-4 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobsTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+                        <tr>
+                            <td colspan="6" class="py-6 text-center text-slate-500">Loading open job positions...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        <!-- Row 3 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Interviewer Name (AI)</label>
-            <input type="text" id="aiName" value="Badri" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition" />
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Designation / Seniority</label>
-            <select id="seniority" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition">
-              <option value="">Select...</option>
-              <option value="Software Engineer (SE)">Software Engineer (SE)</option>
-              <option value="Senior Software Engineer (SSE)">Senior Software Engineer (SSE)</option>
-              <option value="Lead Engineer">Lead Engineer</option>
-            </select>
-          </div>
-        </div>
+    </main>
 
-        <!-- Row 4 -->
-        <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Interview Type</label>
-          <select id="roundType" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition">
-            <option value="">Select...</option>
-            <option value="Technical Deep Dive">Technical Deep Dive</option>
-            <option value="System Design">System Design</option>
-          </select>
-        </div>
+    <!-- Candidate Management Modal -->
+    <div id="candidateModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div>
+                    <h3 class="text-lg font-bold text-white" id="modalJobTitle">Candidates</h3>
+                    <p class="text-xs text-slate-400" id="modalJobId">Job ID: </p>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white text-sm font-semibold">✕ Close</button>
+            </div>
 
-        <!-- Row 5 -->
-        <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Tech Stack & Key Topics (Comma Separated)</label>
-          <input type="text" id="techStack" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition" />
-        </div>
+            <!-- Upload Resume Form -->
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Upload Candidate Resume</h4>
+                <div class="flex gap-3 items-center">
+                    <input type="file" id="resumeFile" accept=".pdf,.txt" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-cyan-600 file:text-white hover:file:bg-cyan-500 cursor-pointer">
+                    <button onclick="uploadAndParseResume()" id="uploadResumeBtn" class="whitespace-nowrap bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-md shadow-cyan-600/30">
+                        Parse & Invite
+                    </button>
+                </div>
+                <div id="resumeAlert" class="hidden p-2.5 rounded-lg text-xs font-medium"></div>
+            </div>
 
-        <!-- Row 6 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end pt-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Interviewer Voice</label>
-            <select id="voice" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition">
-              <option value="">Select Voice...</option>
-              <option value="Indian Voice (English)">Indian Voice (English)</option>
-              <option value="US Female (English)">US Female (English)</option>
-              <option value="UK Male (English)">UK Male (English)</option>
-            </select>
-          </div>
-          
-          <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-md shadow-blue-500/20">
-            Start Interview
-          </button>
+            <!-- Candidates List Table -->
+            <div class="overflow-x-auto max-h-60 overflow-y-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-slate-400 uppercase tracking-wider sticky top-0 bg-slate-900">
+                            <th class="py-2.5 px-3">Name</th>
+                            <th class="py-2.5 px-3">Email</th>
+                            <th class="py-2.5 px-3">Mobile</th>
+                            <th class="py-2.5 px-3">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="candidatesTableBody" class="divide-y divide-slate-800/50 text-slate-300">
+                        <tr><td colspan="4" class="py-4 text-center text-slate-500">Select a job to view candidates.</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-
-      </div>
     </div>
 
-  </main>
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 py-6 text-center text-slate-500 text-xs">
+        © 2026 Kovi.ai. All rights reserved.
+    </footer>
 
-  <!-- Add hidden file inputs right above the closing </main> tag -->
-<input type="file" id="jdFileInput" accept=".pdf,.txt" style="display: none;" onchange="handleJDUpload(event)" />
-<input type="file" id="resumeFileInput" accept=".pdf,.docx,.txt" style="display: none;" onchange="handleResumeUpload(event)" />
+    <script>
+        const API_BASE = "http://127.0.0.1:8000";
+        const token = localStorage.getItem("access_token");
+        let activeJobId = null;
 
-<script>
-  // 1. Trigger the hidden file inputs when the buttons are clicked
-  function simulateParseJD() {
-    document.getElementById('jdFileInput').click();
-  }
+        if (!token) {
+            window.location.href = "auth.html";
+        }
 
-  function simulateParseResume() {
-    document.getElementById('resumeFileInput').click();
-  }
+        document.getElementById("branchBadge").innerText = `${localStorage.getItem("company_name")} (${localStorage.getItem("branch_name")})`;
+        document.getElementById("userEmail").innerText = localStorage.getItem("email");
 
-  // 2. Handle the JD File Upload and AI Parsing
-  async function handleJDUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+        function logout() {
+            localStorage.clear();
+            window.location.href = "auth.html";
+        }
 
-    const loader = document.getElementById('loaderJD');
-    const text = document.getElementById('textJD');
-    const btn = document.getElementById('btnParseJD');
-    
-    loader.style.display = 'block';
-    text.innerText = 'AI is reading JD...';
+        async function loadJobs() {
+            try {
+                const response = await fetch(`${API_BASE}/api/jobs`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error("Failed to fetch jobs");
 
-    const formData = new FormData();
-    formData.append("file", file);
+                const jobs = await response.json();
+                const tbody = document.getElementById("jobsTableBody");
 
-    try {
-      // Send to your local Python backend
-      const response = await fetch("http://127.0.0.1:8000/api/parse-jd", {
-        method: "POST",
-        body: formData
-      });
-      
-      const data = await response.json();
+                if (jobs.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-500">No job openings created yet. Upload a JD above to begin.</td></tr>`;
+                    return;
+                }
 
-      // Auto-fill the form with AI results
-      document.getElementById('jobRole').value = data.job_role || '';
-      document.getElementById('seniority').value = data.seniority || '';
-      document.getElementById('roundType').value = data.interview_type || '';
-      document.getElementById('techStack').value = data.tech_stack || '';
-      // Default voice selection
-      document.getElementById('voice').value = 'Indian Voice (English)';
-      
-      loader.style.display = 'none';
-      text.innerText = 'JD Parsed Successfully ✅';
-      btn.className = 'flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-5 py-2.5 rounded-lg transition';
-    } catch (error) {
-      console.error("Error parsing JD:", error);
-      loader.style.display = 'none';
-      text.innerText = 'Error parsing JD ❌';
-    }
-  }
+                tbody.innerHTML = jobs.map(j => `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="py-4 px-4 font-semibold text-white">
+                            <div>${j.job_id}</div>
+                            <div class="text-xs text-indigo-400 font-normal">${j.job_role}</div>
+                        </td>
+                        <td class="py-4 px-4 text-slate-400">${j.seniority || 'N/A'}</td>
+                        <td class="py-4 px-4 text-slate-400">${j.interview_type || 'N/A'}</td>
+                        <td class="py-4 px-4 max-w-xs truncate text-xs text-slate-400">${j.tech_stack || 'N/A'}</td>
+                        <td class="py-4 px-4 font-medium text-cyan-400">
+                            <button onclick="openCandidatesModal('${j.job_id}', '${j.job_role}')" class="hover:underline">${j.total_candidates} registered</button>
+                        </td>
+                        <td class="py-4 px-4 text-right space-x-2">
+                            <button onclick="openCandidatesModal('${j.job_id}', '${j.job_role}')" class="px-3 py-1.5 rounded-lg bg-indigo-600/30 border border-indigo-500/40 hover:bg-indigo-600/50 text-xs font-medium text-indigo-200 transition">
+                                Manage Candidates
+                            </button>
+                            <button onclick="toggleStatus('${j.job_id}')" class="px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-300 transition">
+                                ${j.status === 'open' ? 'Close' : 'Reopen'}
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
 
-  // 3. Handle the Resume File Upload and AI Parsing
-  async function handleResumeUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+            } catch (err) {
+                console.error(err);
+            }
+        }
 
-    const loader = document.getElementById('loaderResume');
-    const text = document.getElementById('textResume');
-    const btn = document.getElementById('btnParseResume');
-    
-    loader.style.display = 'block';
-    text.innerText = 'Extracting Details...';
+        async function parseAndSaveJD() {
+            const fileInput = document.getElementById("jdFile");
+            const parseBtn = document.getElementById("parseBtn");
+            const alertBox = document.getElementById("parseAlert");
 
-    const formData = new FormData();
-    formData.append("file", file);
+            if (fileInput.files.length === 0) {
+                alertBox.innerText = "Please select a JD file first.";
+                alertBox.className = "mt-4 p-3 rounded-lg text-sm font-medium bg-red-900/40 text-red-300 border border-red-800";
+                alertBox.classList.remove("hidden");
+                return;
+            }
 
-    try {
-      const response = await fetch("http://127.0.0.1:8000/api/parse-resume", {
-        method: "POST",
-        body: formData
-      });
-      
-      const data = await response.json();
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
 
-      // Auto-fill the form with AI results
-      document.getElementById('candidateName').value = data.candidate_name || '';
-      document.getElementById('candidateMobile').value = data.mobile_number || '';
-      document.getElementById('candidateEmail').value = data.email_id || '';
-      
-      loader.style.display = 'none';
-      text.innerText = 'Resume Parsed Successfully ✅';
-      btn.className = 'flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-5 py-2.5 rounded-lg transition';
-    } catch (error) {
-      console.error("Error parsing Resume:", error);
-      loader.style.display = 'none';
-      text.innerText = 'Error parsing Resume ❌';
-    }
-  }
-</script>
+            parseBtn.disabled = true;
+            parseBtn.innerText = "Parsing with Claude...";
+            alertBox.classList.add("hidden");
 
+            try {
+                const parseRes = await fetch(`${API_BASE}/api/parse-jd`, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${token}` },
+                    body: formData
+                });
+                const parsedData = await parseRes.json();
+                if (!parseRes.ok) throw new Error(parsedData.detail || "Failed to parse JD");
+
+                const saveRes = await fetch(`${API_BASE}/api/jobs`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(parsedData)
+                });
+                if (!saveRes.ok) throw new Error("Failed to save job to database");
+
+                alertBox.innerText = `Success! Created Job ID: ${parsedData.job_id} (${parsedData.job_role})`;
+                alertBox.className = "mt-4 p-3 rounded-lg text-sm font-medium bg-emerald-900/40 text-emerald-300 border border-emerald-800";
+                alertBox.classList.remove("hidden");
+
+                fileInput.value = "";
+                loadJobs();
+
+            } catch (err) {
+                alertBox.innerText = err.message;
+                alertBox.className = "mt-4 p-3 rounded-lg text-sm font-medium bg-red-900/40 text-red-300 border border-red-800";
+                alertBox.classList.remove("hidden");
+            } finally {
+                parseBtn.disabled = false;
+                parseBtn.innerText = "Parse & Create JD";
+            }
+        }
+
+        async function toggleStatus(jobId) {
+            await fetch(`${API_BASE}/api/jobs/${jobId}/toggle-status`, {
+                method: "PUT",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            loadJobs();
+        }
+
+        // Candidate Modal Handlers
+        async function openCandidatesModal(jobId, jobRole) {
+            activeJobId = jobId;
+            document.getElementById("modalJobTitle").innerText = jobRole;
+            document.getElementById("modalJobId").innerText = `Job ID: ${jobId}`;
+            document.getElementById("candidateModal").classList.remove("hidden");
+            document.getElementById("candidateModal").classList.add("flex");
+            document.getElementById("resumeAlert").classList.add("hidden");
+            document.getElementById("resumeFile").value = "";
+
+            loadCandidates(jobId);
+        }
+
+        function closeModal() {
+            document.getElementById("candidateModal").classList.add("hidden");
+            document.getElementById("candidateModal").classList.remove("flex");
+            activeJobId = null;
+            loadJobs(); // Refresh counts on main table
+        }
+
+        async function loadCandidates(jobId) {
+            try {
+                const res = await fetch(`${API_BASE}/api/jobs/${jobId}/candidates`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const candidates = await res.json();
+                const tbody = document.getElementById("candidatesTableBody");
+
+                if (candidates.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-500">No candidates registered for this role yet.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = candidates.map(c => `
+                    <tr class="hover:bg-slate-800/30">
+                        <td class="py-2.5 px-3 font-semibold text-white">${c.candidate_name || 'N/A'}</td>
+                        <td class="py-2.5 px-3 text-slate-400">${c.email || 'N/A'}</td>
+                        <td class="py-2.5 px-3 text-slate-400">${c.mobile || 'N/A'}</td>
+                        <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800">${c.status}</span></td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function uploadAndParseResume() {
+            const fileInput = document.getElementById("resumeFile");
+            const uploadBtn = document.getElementById("uploadResumeBtn");
+            const alertBox = document.getElementById("resumeAlert");
+
+            if (!activeJobId || fileInput.files.length === 0) {
+                alertBox.innerText = "Please choose a resume file.";
+                alertBox.className = "p-2.5 rounded-lg text-xs font-medium bg-red-900/40 text-red-300 border border-red-800";
+                alertBox.classList.remove("hidden");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            uploadBtn.disabled = true;
+            uploadBtn.innerText = "Parsing...";
+            alertBox.classList.add("hidden");
+
+            try {
+                // Step 1: Parse resume with Claude
+                const parseRes = await fetch(`${API_BASE}/api/parse-resume`, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${token}` },
+                    body: formData
+                });
+                const parsedData = await parseRes.json();
+                if (!parseRes.ok) throw new Error(parsedData.detail || "Failed to parse resume");
+
+                // Step 2: Save candidate to Neon DB under this job
+                const saveRes = await fetch(`${API_BASE}/api/jobs/${activeJobId}/candidates`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(parsedData)
+                });
+                if (!saveRes.ok) throw new Error("Failed to save candidate to database");
+
+                alertBox.innerText = `Successfully added ${parsedData.candidate_name}! Invite queued.`;
+                alertBox.className = "p-2.5 rounded-lg text-xs font-medium bg-emerald-900/40 text-emerald-300 border border-emerald-800";
+                alertBox.classList.remove("hidden");
+
+                fileInput.value = "";
+                loadCandidates(activeJobId);
+
+            } catch (err) {
+                alertBox.innerText = err.message;
+                alertBox.className = "p-2.5 rounded-lg text-xs font-medium bg-red-900/40 text-red-300 border border-red-800";
+                alertBox.classList.remove("hidden");
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.innerText = "Parse & Invite";
+            }
+        }
+
+        loadJobs();
+    </script>
 </body>
 </html>
