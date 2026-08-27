@@ -91,7 +91,7 @@
 
     <!-- Candidate Management Modal -->
     <div id="candidateModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between border-b border-slate-800 pb-4">
                 <div>
                     <h3 class="text-lg font-bold text-white" id="modalJobTitle">Candidates</h3>
@@ -100,20 +100,66 @@
                 <button onclick="closeModal()" class="text-slate-400 hover:text-white text-sm font-semibold">✕ Close</button>
             </div>
 
-            <!-- Upload Resume Form -->
-            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
-                <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Upload Candidate Resume</h4>
+            <!-- Step 1: Upload Resume Section -->
+            <div id="uploadSection" class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">1. Upload Candidate Resume to Auto-Fill</h4>
                 <div class="flex gap-3 items-center">
                     <input type="file" id="resumeFile" accept=".pdf,.txt" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-cyan-600 file:text-white hover:file:bg-cyan-500 cursor-pointer">
-                    <button onclick="uploadAndParseResume()" id="uploadResumeBtn" class="whitespace-nowrap bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-md shadow-cyan-600/30">
-                        Parse & Invite
+                    <button onclick="parseResume()" id="parseResumeBtn" class="whitespace-nowrap bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-md shadow-cyan-600/30">
+                        Extract & Fill Form
                     </button>
                 </div>
-                <div id="resumeAlert" class="hidden p-2.5 rounded-lg text-xs font-medium"></div>
+                <div id="parseResumeAlert" class="hidden p-2.5 rounded-lg text-xs font-medium"></div>
+            </div>
+
+            <!-- Step 2: Review & Send Form (Initially Hidden) -->
+            <div id="reviewFormSection" class="hidden bg-slate-950 p-5 rounded-xl border border-indigo-500/40 space-y-4">
+                <h4 class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">2. Review Details & Send Invitation Email</h4>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Candidate Name</label>
+                        <input type="text" id="formCandidateName" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Candidate Email</label>
+                        <input type="email" id="formCandidateEmail" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Mobile Number</label>
+                        <input type="text" id="formMobile" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Communication Email (HR)</label>
+                        <input type="text" id="formHrEmail" disabled class="w-full bg-slate-900/50 border border-slate-800/50 rounded-lg px-3 py-2 text-xs text-slate-400">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Role / Designation</label>
+                        <input type="text" id="formRole" disabled class="w-full bg-slate-900/50 border border-slate-800/50 rounded-lg px-3 py-2 text-xs text-slate-400">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Focus Areas / Tech Stack (Editable)</label>
+                        <input type="text" id="formTechStack" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button onclick="resetUploadForm()" class="px-4 py-2 rounded-lg border border-slate-700 text-xs text-slate-300 hover:bg-slate-800">Cancel</button>
+                    <button onclick="sendInvitationEmail()" id="sendInviteBtn" class="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-lg shadow-indigo-600/30">
+                        Send Interview Invitation Email
+                    </button>
+                </div>
+                <div id="inviteAlert" class="hidden p-2.5 rounded-lg text-xs font-medium"></div>
             </div>
 
             <!-- Candidates List Table -->
-            <div class="overflow-x-auto max-h-60 overflow-y-auto">
+            <div class="overflow-x-auto max-h-48 overflow-y-auto">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="border-b border-slate-800 text-slate-400 uppercase tracking-wider sticky top-0 bg-slate-900">
@@ -140,6 +186,7 @@
         const API_BASE = "http://127.0.0.1:8000";
         const token = localStorage.getItem("access_token");
         let activeJobId = null;
+        let activeJobData = null;
 
         if (!token) {
             window.location.href = "auth.html";
@@ -259,15 +306,20 @@
             loadJobs();
         }
 
-        // Candidate Modal Handlers
         async function openCandidatesModal(jobId, jobRole) {
             activeJobId = jobId;
             document.getElementById("modalJobTitle").innerText = jobRole;
             document.getElementById("modalJobId").innerText = `Job ID: ${jobId}`;
             document.getElementById("candidateModal").classList.remove("hidden");
             document.getElementById("candidateModal").classList.add("flex");
-            document.getElementById("resumeAlert").classList.add("hidden");
-            document.getElementById("resumeFile").value = "";
+
+            resetUploadForm();
+
+            const res = await fetch(`${API_BASE}/api/jobs`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const jobs = await res.json();
+            activeJobData = jobs.find(j => j.job_id === jobId);
 
             loadCandidates(jobId);
         }
@@ -276,7 +328,111 @@
             document.getElementById("candidateModal").classList.add("hidden");
             document.getElementById("candidateModal").classList.remove("flex");
             activeJobId = null;
-            loadJobs(); // Refresh counts on main table
+            loadJobs();
+        }
+
+        function resetUploadForm() {
+            document.getElementById("uploadSection").classList.remove("hidden");
+            document.getElementById("reviewFormSection").classList.add("hidden");
+            document.getElementById("resumeFile").value = "";
+            document.getElementById("parseResumeAlert").classList.add("hidden");
+            document.getElementById("inviteAlert").classList.add("hidden"); // Clears leftover alert state
+        }
+
+        async function parseResume() {
+            const fileInput = document.getElementById("resumeFile");
+            const parseBtn = document.getElementById("parseResumeBtn");
+            const alertBox = document.getElementById("parseResumeAlert");
+
+            if (fileInput.files.length === 0) {
+                alertBox.innerText = "Please choose a resume file first.";
+                alertBox.className = "p-2.5 rounded-lg text-xs font-medium bg-red-900/40 text-red-300 border border-red-800";
+                alertBox.classList.remove("hidden");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            parseBtn.disabled = true;
+            parseBtn.innerText = "Extracting...";
+            alertBox.classList.add("hidden");
+            document.getElementById("inviteAlert").classList.add("hidden"); // Ensure invite alert starts hidden
+
+            try {
+                const parseRes = await fetch(`${API_BASE}/api/parse-resume`, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${token}` },
+                    body: formData
+                });
+                const parsedData = await parseRes.json();
+                if (!parseRes.ok) throw new Error(parsedData.detail || "Failed to parse resume");
+
+                document.getElementById("formCandidateName").value = parsedData.candidate_name || "";
+                document.getElementById("formCandidateEmail").value = parsedData.email_id || "";
+                document.getElementById("formMobile").value = parsedData.mobile_number || "";
+                document.getElementById("formHrEmail").value = localStorage.getItem("email");
+                document.getElementById("formRole").value = activeJobData.job_role || "";
+                document.getElementById("formTechStack").value = activeJobData.tech_stack || "";
+
+                document.getElementById("uploadSection").classList.add("hidden");
+                document.getElementById("reviewFormSection").classList.remove("hidden");
+
+            } catch (err) {
+                alertBox.innerText = err.message;
+                alertBox.className = "p-2.5 rounded-lg text-xs font-medium bg-red-900/40 text-red-300 border border-red-800";
+                alertBox.classList.remove("hidden");
+            } finally {
+                parseBtn.disabled = false;
+                parseBtn.innerText = "Extract & Fill Form";
+            }
+        }
+
+        async function sendInvitationEmail() {
+            const sendBtn = document.getElementById("sendInviteBtn");
+            const alertBox = document.getElementById("inviteAlert");
+
+            const payload = {
+                candidate_name: document.getElementById("formCandidateName").value,
+                email: document.getElementById("formCandidateEmail").value,
+                mobile: document.getElementById("formMobile").value,
+                tech_stack: document.getElementById("formTechStack").value
+            };
+
+            sendBtn.disabled = true;
+            sendBtn.innerText = "Sending Mail...";
+            alertBox.classList.add("hidden");
+
+            try {
+                const res = await fetch(`${API_BASE}/api/jobs/${activeJobId}/candidates`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "Failed to send invitation");
+
+                alertBox.innerText = "Invitation email sent successfully to candidate!";
+                alertBox.className = "p-2.5 rounded-lg text-xs font-medium bg-emerald-900/40 text-emerald-300 border border-emerald-800";
+                alertBox.classList.remove("hidden");
+
+                setTimeout(() => {
+                    resetUploadForm();
+                    loadCandidates(activeJobId);
+                    loadJobs();
+                }, 1500);
+
+            } catch (err) {
+                alertBox.innerText = err.message;
+                alertBox.className = "p-2.5 rounded-lg text-xs font-medium bg-red-900/40 text-red-300 border border-red-800";
+                alertBox.classList.remove("hidden");
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.innerText = "Send Interview Invitation Email";
+            }
         }
 
         async function loadCandidates(jobId) {
@@ -302,63 +458,6 @@
                 `).join('');
             } catch (err) {
                 console.error(err);
-            }
-        }
-
-        async function uploadAndParseResume() {
-            const fileInput = document.getElementById("resumeFile");
-            const uploadBtn = document.getElementById("uploadResumeBtn");
-            const alertBox = document.getElementById("resumeAlert");
-
-            if (!activeJobId || fileInput.files.length === 0) {
-                alertBox.innerText = "Please choose a resume file.";
-                alertBox.className = "p-2.5 rounded-lg text-xs font-medium bg-red-900/40 text-red-300 border border-red-800";
-                alertBox.classList.remove("hidden");
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append("file", fileInput.files[0]);
-
-            uploadBtn.disabled = true;
-            uploadBtn.innerText = "Parsing...";
-            alertBox.classList.add("hidden");
-
-            try {
-                // Step 1: Parse resume with Claude
-                const parseRes = await fetch(`${API_BASE}/api/parse-resume`, {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${token}` },
-                    body: formData
-                });
-                const parsedData = await parseRes.json();
-                if (!parseRes.ok) throw new Error(parsedData.detail || "Failed to parse resume");
-
-                // Step 2: Save candidate to Neon DB under this job
-                const saveRes = await fetch(`${API_BASE}/api/jobs/${activeJobId}/candidates`, {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${token}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(parsedData)
-                });
-                if (!saveRes.ok) throw new Error("Failed to save candidate to database");
-
-                alertBox.innerText = `Successfully added ${parsedData.candidate_name}! Invite queued.`;
-                alertBox.className = "p-2.5 rounded-lg text-xs font-medium bg-emerald-900/40 text-emerald-300 border border-emerald-800";
-                alertBox.classList.remove("hidden");
-
-                fileInput.value = "";
-                loadCandidates(activeJobId);
-
-            } catch (err) {
-                alertBox.innerText = err.message;
-                alertBox.className = "p-2.5 rounded-lg text-xs font-medium bg-red-900/40 text-red-300 border border-red-800";
-                alertBox.classList.remove("hidden");
-            } finally {
-                uploadBtn.disabled = false;
-                uploadBtn.innerText = "Parse & Invite";
             }
         }
 

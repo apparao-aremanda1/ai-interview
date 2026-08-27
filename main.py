@@ -63,9 +63,11 @@ class SignUpRequest(BaseModel):
     email: EmailStr
     password: str
 
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -106,12 +108,21 @@ class ResumeParsedData(BaseModel):
     email_id: str = Field(description="Email address of the candidate")
 
 
+class AddCandidateRequest(BaseModel):
+    candidate_name: str
+    email: str
+    mobile: str
+    tech_stack: Optional[str] = ""
+
+
 # --- Helper Utilities ---
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
+
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
@@ -119,12 +130,14 @@ def create_access_token(data: dict) -> str:
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+
 def extract_text_from_pdf(file_bytes: bytes) -> str:
     reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
     text_content = ""
     for page in reader.pages:
         text_content += (page.extract_text() or "") + "\n"
     return text_content
+
 
 def get_current_account(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     token = credentials.credentials
@@ -173,11 +186,9 @@ def send_activation_email(to_email: str, token: str):
     msg["From"] = smtp_user
     msg["To"] = to_email
 
-    # Plain text fallback
     msg.set_content(
         f"Hello,\n\nClick the link below to activate your Kovi.ai branch account:\n{activation_link}\n\nIf you did not request this, please ignore this email.")
 
-    # Rich HTML version with a clickable button
     html_content = f"""
     <html>
       <body style="font-family: Arial, sans-serif; background-color: #0b0f19; padding: 30px; color: #f8fafc;">
@@ -206,6 +217,83 @@ def send_activation_email(to_email: str, token: str):
         raise HTTPException(status_code=500, detail="Failed to send verification email.")
 
 
+def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_role: str, tech_stack: str,
+                                company_name: str, branch_name: str, invite_link: str):
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = int(os.getenv("SMTP_PORT", 587))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASS")
+
+    deadline_str = (datetime.now() + timedelta(hours=48)).strftime("%B %d, %Y at %I:%M %p")
+
+    if not smtp_host or not smtp_user or not smtp_pass:
+        print("\n==============================")
+        print(f"CANDIDATE INTERVIEW LINK FOR {candidate_email}:")
+        print(invite_link)
+        print("==============================\n")
+        return
+
+    msg = EmailMessage()
+    msg["Subject"] = f"Interview Invitation: {job_role} at {company_name} ({branch_name})"
+    msg["From"] = smtp_user
+    msg["To"] = candidate_email
+
+    html_content = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; background-color: #0b0f19; padding: 30px; color: #f8fafc; line-height: 1.6;">
+        <div style="max-width: 600px; background: #1e293b; padding: 35px; border-radius: 12px; border: 1px solid #334155;">
+          <p style="font-size: 15px; color: #f8fafc;">Hi <b>{candidate_name}</b>,</p>
+
+          <p style="font-size: 14px; color: #cbd5e1;">You're just one step away from moving forward with the <b>{job_role}</b> role. You can review the role here.</p>
+
+          <p style="font-size: 14px; color: #cbd5e1;">The next step is a brief, conversational AI interview where we get to know your experience, skills, and fit for the role.</p>
+
+          <p style="font-size: 14px; color: #f8fafc; font-weight: bold; margin-top: 20px;">Here's what to expect:</p>
+          <ul style="font-size: 14px; color: #cbd5e1; padding-left: 20px; margin-top: 5px;">
+            <li><b>Format:</b> AI Interview</li>
+            <li><b>Estimated duration:</b> up to 30 minutes</li>
+            <li><b>Focus areas:</b> {tech_stack}</li>
+          </ul>
+
+          <p style="font-size: 14px; color: #cbd5e1; margin-top: 20px;">We typically fill roles quickly, so we recommend completing it before <b>{deadline_str}</b> (48 hours from now).</p>
+
+          <p style="font-size: 14px; color: #f8fafc; font-weight: bold; margin-top: 20px;">Before you begin</p>
+          <ul style="font-size: 14px; color: #cbd5e1; padding-left: 20px; margin-top: 5px;">
+            <li>Find a quiet space with good and stable internet</li>
+            <li>Use a laptop/desktop for the best experience</li>
+            <li>Allow microphone and camera access when prompted</li>
+            <li>Be ready to share your screen</li>
+          </ul>
+
+          <p style="font-size: 14px; color: #cbd5e1; margin-top: 25px;">When you're ready, start your AI interview here:</p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="{invite_link}" style="background-color: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 14px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);">Start your AI interview</a>
+          </div>
+
+          <p style="font-size: 14px; color: #cbd5e1; margin-top: 20px;">We look forward to hearing your responses!</p>
+
+          <p style="font-size: 14px; color: #f8fafc; margin-top: 30px; margin-bottom: 0;">Best,<br><b>{company_name} team</b></p>
+        </div>
+      </body>
+    </html>
+    """
+
+    plain_text = f"Hi {candidate_name},\n\nYou're just one step away from moving forward with the {job_role} role. You can review the role here.\n\nThe next step is a brief, conversational AI interview.\n\nFocus areas: {tech_stack}\n\nComplete it before: {deadline_str}\n\nStart your AI interview here: {invite_link}\n\nBest,\n{company_name} team"
+
+    msg.set_content(plain_text)
+    msg.add_alternative(html_content, subtype='html')
+
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+            print(f"Successfully sent candidate email to {candidate_email} via {smtp_user}")
+    except Exception as e:
+        print(f"Failed to send candidate email: {e}")
+
+
 # ==========================================
 # Authentication Endpoints
 # ==========================================
@@ -213,13 +301,16 @@ def send_activation_email(to_email: str, token: str):
 def serve_home():
     return FileResponse("index.html")
 
+
 @app.get("/auth.html")
 def serve_auth():
     return FileResponse("auth.html")
 
+
 @app.get("/dashboard.html")
 def serve_dashboard():
     return FileResponse("dashboard.html")
+
 
 @app.post("/api/auth/signup")
 def signup(payload: SignUpRequest):
@@ -227,11 +318,9 @@ def signup(payload: SignUpRequest):
     branch = payload.branch_name.strip()
     email = payload.email.strip().lower()
 
-    # 1. Validate that it's a corporate email, not a generic public provider
     validate_company_email(email)
 
     with engine.connect() as conn:
-        # Check if Company + Branch already exists
         check_query = text("""
             SELECT account_id FROM branch_accounts 
             WHERE LOWER(company_name) = LOWER(:c) AND LOWER(branch_name) = LOWER(:b)
@@ -240,12 +329,11 @@ def signup(payload: SignUpRequest):
         if existing:
             raise HTTPException(status_code=400, detail="An account for this company and branch already exists.")
 
-        # Check if email is already registered
-        email_check = conn.execute(text("SELECT account_id FROM branch_accounts WHERE email = :e"), {"e": email}).fetchone()
+        email_check = conn.execute(text("SELECT account_id FROM branch_accounts WHERE email = :e"),
+                                   {"e": email}).fetchone()
         if email_check:
             raise HTTPException(status_code=400, detail="This email address is already registered.")
 
-        # Insert new branch account with is_active = FALSE
         hashed_pwd = hash_password(payload.password)
         insert_query = text("""
             INSERT INTO branch_accounts (company_name, branch_name, email, password_hash, is_active)
@@ -255,11 +343,8 @@ def signup(payload: SignUpRequest):
         account_id = conn.execute(insert_query, {"c": company, "b": branch, "e": email, "p": hashed_pwd}).scalar()
         conn.commit()
 
-    # Generate an activation token (valid for 1 day)
     token_data = {"account_id": str(account_id), "email": email}
     activation_token = create_access_token(token_data)
-
-    # Send verification email
     send_activation_email(email, activation_token)
 
     return {
@@ -288,7 +373,7 @@ def verify_account(token: str):
         raise HTTPException(status_code=400, detail="Activation link is invalid or has expired.")
 
 
-@app.post("/api/auth/login")
+@app.post("/api/auth/login", response_model=TokenResponse)
 def login(payload: LoginRequest):
     email = payload.email.strip().lower()
     with engine.connect() as conn:
@@ -319,32 +404,6 @@ def login(payload: LoginRequest):
     }
 
 
-@app.post("/api/auth/login", response_model=TokenResponse)
-def login(payload: LoginRequest):
-    email = payload.email.strip().lower()
-    with engine.connect() as conn:
-        query = text("SELECT account_id, company_name, branch_name, password_hash FROM branch_accounts WHERE email = :e")
-        user = conn.execute(query, {"e": email}).mappings().fetchone()
-
-        if not user or not verify_password(payload.password, user["password_hash"]):
-            raise HTTPException(status_code=401, detail="Invalid email or password.")
-
-    token_data = {
-        "account_id": str(user["account_id"]),
-        "company_name": user["company_name"],
-        "branch_name": user["branch_name"],
-        "email": email
-    }
-    access_token = create_access_token(token_data)
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "company_name": user["company_name"],
-        "branch_name": user["branch_name"],
-        "email": email
-    }
-
-
 # ==========================================
 # AI Document Parsing Endpoints (Claude 3)
 # ==========================================
@@ -355,12 +414,14 @@ async def parse_jd(file: UploadFile = File(...), current_account: dict = Depends
     text_content = extract_text_from_pdf(content) if file.filename.endswith(".pdf") else content.decode("utf-8")
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an expert technical recruiter. Extract the requested job details from the job description. Generate a sensible short job_id (e.g. JD-101) if not explicitly present."),
+        ("system",
+         "You are an expert technical recruiter. Extract the requested job details from the job description. Generate a sensible short job_id (e.g. JD-101) if not explicitly present."),
         ("user", "{jd_text}")
     ])
     structured_llm = llm.with_structured_output(JDParsedData)
     chain = prompt | structured_llm
     return chain.invoke({"jd_text": text_content})
+
 
 @app.post("/api/parse-resume", response_model=ResumeParsedData)
 async def parse_resume(file: UploadFile = File(...), current_account: dict = Depends(get_current_account)):
@@ -368,7 +429,8 @@ async def parse_resume(file: UploadFile = File(...), current_account: dict = Dep
     text_content = extract_text_from_pdf(content) if file.filename.endswith(".pdf") else content.decode("utf-8")
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "Extract the candidate's name, email, and phone number from the resume text. Return an empty string if a field is not found."),
+        ("system",
+         "Extract the candidate's name, email, and phone number from the resume text. Return an empty string if a field is not found."),
         ("user", "{resume_text}")
     ])
     structured_llm = llm.with_structured_output(ResumeParsedData)
@@ -430,6 +492,7 @@ def list_jobs(current_account: dict = Depends(get_current_account)):
         rows = conn.execute(query, {"aid": account_id}).mappings().all()
     return list(rows)
 
+
 @app.put("/api/jobs/{job_id}/toggle-status")
 def toggle_job_status(job_id: str, current_account: dict = Depends(get_current_account)):
     account_id = current_account["account_id"]
@@ -442,10 +505,22 @@ def toggle_job_status(job_id: str, current_account: dict = Depends(get_current_a
         conn.commit()
     return {"message": "Job status toggled successfully"}
 
+
 @app.post("/api/jobs/{job_id}/candidates")
-def add_candidate(job_id: str, payload: ResumeParsedData, current_account: dict = Depends(get_current_account)):
+def add_candidate(job_id: str, payload: AddCandidateRequest, current_account: dict = Depends(get_current_account)):
     account_id = current_account["account_id"]
+    company_name = current_account["company_name"]
+    branch_name = current_account["branch_name"]
+
     with engine.connect() as conn:
+        job = conn.execute(
+            text("SELECT job_role FROM job_descriptions WHERE account_id = :aid AND job_id = :jid"),
+            {"aid": account_id, "jid": job_id}
+        ).mappings().fetchone()
+
+        if not job:
+            raise HTTPException(status_code=404, detail="Job opening not found.")
+
         query = text("""
             INSERT INTO candidates (account_id, job_id, candidate_name, email, mobile, status)
             VALUES (:aid, :jid, :name, :email, :mobile, 'invite_sent')
@@ -455,11 +530,25 @@ def add_candidate(job_id: str, payload: ResumeParsedData, current_account: dict 
             "aid": account_id,
             "jid": job_id,
             "name": payload.candidate_name,
-            "email": payload.email_id,
-            "mobile": payload.mobile_number
+            "email": payload.email,
+            "mobile": payload.mobile
         }).scalar()
         conn.commit()
-    return {"candidate_id": cand_id, "message": "Candidate added and invite queued"}
+
+    invite_link = f"http://127.0.0.1:8000/interview.html?candidate_id={cand_id}&job_id={job_id}"
+
+    send_candidate_invite_email(
+        candidate_email=payload.email,
+        candidate_name=payload.candidate_name,
+        job_role=job["job_role"],
+        tech_stack=payload.tech_stack or "General Technical Evaluation",
+        company_name=company_name,
+        branch_name=branch_name,
+        invite_link=invite_link
+    )
+
+    return {"candidate_id": cand_id, "message": "Candidate added and invitation email sent successfully!"}
+
 
 @app.get("/api/jobs/{job_id}/candidates")
 def get_job_candidates(job_id: str, current_account: dict = Depends(get_current_account)):
