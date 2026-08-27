@@ -1,21 +1,22 @@
-import os
 import io
+import os
+import smtplib
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List
-
-from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field, EmailStr
-from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
-from passlib.context import CryptContext
-from jose import jwt, JWTError
+from email.message import EmailMessage
+from typing import Optional
 
 import PyPDF2
+from dotenv import load_dotenv
+from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import jwt, JWTError
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
+from passlib.context import CryptContext
+from pydantic import BaseModel, Field, EmailStr
+from sqlalchemy import create_engine, text
 
 load_dotenv()
 
@@ -137,6 +138,74 @@ def get_current_account(credentials: HTTPAuthorizationCredentials = Depends(secu
         raise HTTPException(status_code=401, detail="Could not validate credentials")
 
 
+BLOCKED_DOMAINS = {
+    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com",
+    "icloud.com", "aol.com", "zoho.com", "mail.com", "live.com"
+}
+
+
+def validate_company_email(email: str):
+    domain = email.split("@")[-1].lower()
+    if domain in BLOCKED_DOMAINS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Registration restricted. '{domain}' is a public email provider. Please use your official company mail ID."
+        )
+
+
+def send_activation_email(to_email: str, token: str):
+    activation_link = f"http://127.0.0.1:8000/api/auth/verify?token={token}"
+
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = int(os.getenv("SMTP_PORT", 587))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASS")
+
+    if not smtp_host or not smtp_user or not smtp_pass:
+        print("\n==============================")
+        print(f"ACTIVATION LINK FOR {to_email}:")
+        print(activation_link)
+        print("==============================\n")
+        return
+
+    msg = EmailMessage()
+    msg["Subject"] = "Activate Your Kovi.ai Branch Account"
+    msg["From"] = smtp_user
+    msg["To"] = to_email
+
+    # Plain text fallback
+    msg.set_content(
+        f"Hello,\n\nClick the link below to activate your Kovi.ai branch account:\n{activation_link}\n\nIf you did not request this, please ignore this email.")
+
+    # Rich HTML version with a clickable button
+    html_content = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; background-color: #0b0f19; padding: 30px; color: #f8fafc;">
+        <div style="max-width: 500px; background: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid #334155;">
+          <h2 style="color: #38bdf8; margin-top: 0;">Activate Your Kovi.ai Account</h2>
+          <p style="color: #94a3b8; font-size: 14px;">Hello,</p>
+          <p style="color: #94a3b8; font-size: 14px;">Thank you for registering your company branch. Please click the button below to verify your email and activate your account:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="{activation_link}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Activate Account</a>
+          </div>
+          <p style="color: #64748b; font-size: 12px;">If the button doesn't work, copy and paste this link into your browser:</p>
+          <p style="color: #38bdf8; font-size: 11px; word-break: break-all;">{activation_link}</p>
+        </div>
+      </body>
+    </html>
+    """
+    msg.add_alternative(html_content, subtype='html')
+
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send verification email.")
+
+
 # ==========================================
 # Authentication Endpoints
 # ==========================================
@@ -152,11 +221,14 @@ def serve_auth():
 def serve_dashboard():
     return FileResponse("dashboard.html")
 
-@app.post("/api/auth/signup", response_model=TokenResponse)
+@app.post("/api/auth/signup")
 def signup(payload: SignUpRequest):
     company = payload.company_name.strip()
     branch = payload.branch_name.strip()
     email = payload.email.strip().lower()
+
+    # 1. Validate that it's a corporate email, not a generic public provider
+    validate_company_email(email)
 
     with engine.connect() as conn:
         # Check if Company + Branch already exists
@@ -173,25 +245,79 @@ def signup(payload: SignUpRequest):
         if email_check:
             raise HTTPException(status_code=400, detail="This email address is already registered.")
 
-        # Insert new branch account
+        # Insert new branch account with is_active = FALSE
         hashed_pwd = hash_password(payload.password)
         insert_query = text("""
-            INSERT INTO branch_accounts (company_name, branch_name, email, password_hash)
-            VALUES (:c, :b, :e, :p)
+            INSERT INTO branch_accounts (company_name, branch_name, email, password_hash, is_active)
+            VALUES (:c, :b, :e, :p, FALSE)
             RETURNING account_id
         """)
         account_id = conn.execute(insert_query, {"c": company, "b": branch, "e": email, "p": hashed_pwd}).scalar()
         conn.commit()
 
-    token_data = {"account_id": str(account_id), "company_name": company, "branch_name": branch, "email": email}
+    # Generate an activation token (valid for 1 day)
+    token_data = {"account_id": str(account_id), "email": email}
+    activation_token = create_access_token(token_data)
+
+    # Send verification email
+    send_activation_email(email, activation_token)
+
+    return {
+        "message": "Registration successful! Please check your company email inbox to activate your account before logging in."
+    }
+
+
+@app.get("/api/auth/verify")
+def verify_account(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        account_id = payload.get("account_id")
+        if not account_id:
+            raise HTTPException(status_code=400, detail="Invalid activation token.")
+
+        with engine.connect() as conn:
+            conn.execute(
+                text("UPDATE branch_accounts SET is_active = TRUE WHERE account_id = :aid"),
+                {"aid": account_id}
+            )
+            conn.commit()
+
+        return {
+            "message": "Account activated successfully! You can now close this window and log in to your dashboard."}
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Activation link is invalid or has expired.")
+
+
+@app.post("/api/auth/login")
+def login(payload: LoginRequest):
+    email = payload.email.strip().lower()
+    with engine.connect() as conn:
+        query = text(
+            "SELECT account_id, company_name, branch_name, password_hash, is_active FROM branch_accounts WHERE email = :e")
+        user = conn.execute(query, {"e": email}).mappings().fetchone()
+
+        if not user or not verify_password(payload.password, user["password_hash"]):
+            raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+        if not user["is_active"]:
+            raise HTTPException(status_code=403,
+                                detail="Account not activated. Please check your company email for the verification link.")
+
+    token_data = {
+        "account_id": str(user["account_id"]),
+        "company_name": user["company_name"],
+        "branch_name": user["branch_name"],
+        "email": email
+    }
     access_token = create_access_token(token_data)
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "company_name": company,
-        "branch_name": branch,
+        "company_name": user["company_name"],
+        "branch_name": user["branch_name"],
         "email": email
     }
+
 
 @app.post("/api/auth/login", response_model=TokenResponse)
 def login(payload: LoginRequest):
