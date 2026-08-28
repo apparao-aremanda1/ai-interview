@@ -45,12 +45,22 @@
             <h2 class="text-lg font-bold text-white mb-2">Create Job Description & Launch Screening</h2>
             <p class="text-sm text-slate-400 mb-6">Upload a Job Description (PDF or Text). Claude will extract the tech stack and requirements instantly.</p>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                <div class="md:col-span-2">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                <div class="md:col-span-5">
                     <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Select JD File</label>
                     <input type="file" id="jdFile" accept=".pdf,.txt" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-300 file:mr-4 file:py-1 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer">
                 </div>
-                <div>
+                <div class="md:col-span-4">
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Interview Type</label>
+                    <select id="jdInterviewType" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500">
+                        <option value="Initial Screening">Initial Screening</option>
+                        <option value="Technical Deep Dive" selected>Technical Deep Dive</option>
+                        <option value="Behavioral & Culture Fit">Behavioral & Culture Fit</option>
+                        <option value="System Design">System Design</option>
+                        <option value="Full Stack Evaluation">Full Stack Evaluation</option>
+                    </select>
+                </div>
+                <div class="md:col-span-3">
                     <button onclick="parseAndSaveJD()" id="parseBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-4 rounded-xl transition shadow-lg shadow-indigo-600/30 text-sm">
                         Parse & Create JD
                     </button>
@@ -144,8 +154,14 @@
                         <input type="text" id="formRole" disabled class="w-full bg-slate-900/50 border border-slate-800/50 rounded-lg px-3 py-2 text-xs text-slate-400">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Focus Areas / Tech Stack (Editable)</label>
-                        <input type="text" id="formTechStack" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Interview Type (Editable)</label>
+                        <select id="formInterviewType" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                            <option value="Initial Screening">Initial Screening</option>
+                            <option value="Technical Deep Dive">Technical Deep Dive</option>
+                            <option value="Behavioral & Culture Fit">Behavioral & Culture Fit</option>
+                            <option value="System Design">System Design</option>
+                            <option value="Full Stack Evaluation">Full Stack Evaluation</option>
+                        </select>
                     </div>
                 </div>
 
@@ -161,6 +177,11 @@
                         <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Passing Score (Editable)</label>
                         <input type="number" step="0.1" id="formPassingScore" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
                     </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Focus Areas / Tech Stack (Editable)</label>
+                    <input type="text" id="formTechStack" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
                 </div>
 
                 <div>
@@ -266,6 +287,7 @@
             const fileInput = document.getElementById("jdFile");
             const parseBtn = document.getElementById("parseBtn");
             const alertBox = document.getElementById("parseAlert");
+            const selectedInterviewType = document.getElementById("jdInterviewType").value;
 
             if (fileInput.files.length === 0) {
                 alertBox.innerText = "Please select a JD file first.";
@@ -282,6 +304,7 @@
             alertBox.classList.add("hidden");
 
             try {
+                // Parse JD
                 const parseRes = await fetch(`${API_BASE}/api/parse-jd`, {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${token}` },
@@ -290,6 +313,10 @@
                 const parsedData = await parseRes.json();
                 if (!parseRes.ok) throw new Error(parsedData.detail || "Failed to parse JD");
 
+                // Override Claude's generated interview type with the HR dropdown selection
+                parsedData.interview_type = selectedInterviewType;
+
+                // Save to DB
                 const saveRes = await fetch(`${API_BASE}/api/jobs`, {
                     method: "POST",
                     headers: {
@@ -392,14 +419,23 @@
                 document.getElementById("formMobile").value = parsedData.mobile_number || "";
                 document.getElementById("formHrEmail").value = localStorage.getItem("email");
                 document.getElementById("formRole").value = activeJobData.job_role || "";
+
+                const interviewSelect = document.getElementById("formInterviewType");
+                let matchedType = Array.from(interviewSelect.options).some(opt => opt.value === activeJobData.interview_type);
+                if (matchedType) {
+                    interviewSelect.value = activeJobData.interview_type;
+                } else {
+                    interviewSelect.value = "Technical Deep Dive";
+                }
+
                 document.getElementById("formTechStack").value = activeJobData.tech_stack || "";
                 document.getElementById("formPassingScore").value = activeJobData.passing_score || "";
                 document.getElementById("formMustQuestions").value = activeJobData.must_questions || "";
 
                 // Set persona dropdown if matching value exists, otherwise default
                 const personaSelect = document.getElementById("formPersona");
-                let matched = Array.from(personaSelect.options).some(opt => opt.value === activeJobData.persona);
-                if (matched) {
+                let matchedPersona = Array.from(personaSelect.options).some(opt => opt.value === activeJobData.persona);
+                if (matchedPersona) {
                     personaSelect.value = activeJobData.persona;
                 } else {
                     personaSelect.selectedIndex = 0; // Default to Friendly Indian Female
@@ -427,6 +463,7 @@
                 candidate_name: document.getElementById("formCandidateName").value,
                 email: document.getElementById("formCandidateEmail").value,
                 mobile: document.getElementById("formMobile").value,
+                interview_type: document.getElementById("formInterviewType").value,
                 tech_stack: document.getElementById("formTechStack").value,
                 persona: document.getElementById("formPersona").value,
                 passing_score: passingScoreVal ? parseFloat(passingScoreVal) : null,

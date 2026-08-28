@@ -158,7 +158,7 @@ def send_activation_email(to_email: str, token: str):
         raise HTTPException(status_code=500, detail="Failed to send verification email.")
 
 
-def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_role: str, tech_stack: str,
+def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_role: str, interview_type: str, tech_stack: str,
                                 company_name: str, branch_name: str, invite_link: str):
     smtp_host = os.getenv("SMTP_HOST")
     smtp_port = int(os.getenv("SMTP_PORT", 587))
@@ -191,7 +191,7 @@ def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_r
 
           <p style="font-size: 14px; color: #f8fafc; font-weight: bold; margin-top: 20px;">Interview Details:</p>
           <ul style="font-size: 14px; color: #cbd5e1; padding-left: 20px; margin-top: 5px;">
-            <li><b>Assessment Type:</b> Interactive AI Voice Interview</li>
+            <li><b>Assessment Type:</b> {interview_type} (AI-driven)</li>
             <li><b>Time Commitment:</b> Approximately 30 minutes</li>
             <li><b>Core Topics:</b> {tech_stack}</li>
           </ul>
@@ -220,7 +220,7 @@ def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_r
     </html>
     """
 
-    plain_text = f"Dear {candidate_name},\n\nCongratulations on advancing to the next stage of our selection process for the {job_role} position.\n\nTo better understand your technical background and problem-solving skills, we invite you to complete a conversational AI-driven technical screening.\n\nCore Topics: {tech_stack}\n\nPlease complete it before: {deadline_str}\n\nLaunch Assessment here: {invite_link}\n\nSincerely,\nThe {company_name} Hiring Team"
+    plain_text = f"Dear {candidate_name},\n\nCongratulations on advancing to the next stage of our selection process for the {job_role} position.\n\nTo better understand your technical background and problem-solving skills, we invite you to complete a conversational AI-driven technical screening.\n\nFormat: {interview_type}\nCore Topics: {tech_stack}\n\nPlease complete it before: {deadline_str}\n\nLaunch Assessment here: {invite_link}\n\nSincerely,\nThe {company_name} Hiring Team"
 
     msg.set_content(plain_text)
     msg.add_alternative(html_content, subtype='html')
@@ -293,6 +293,7 @@ class AddCandidateRequest(BaseModel):
     candidate_name: str
     email: str
     mobile: str
+    interview_type: Optional[str] = ""
     tech_stack: Optional[str] = ""
     persona: Optional[str] = ""
     passing_score: Optional[float] = None
@@ -522,7 +523,7 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
 
     with engine.connect() as conn:
         job = conn.execute(
-            text("SELECT job_role FROM job_descriptions WHERE account_id = :aid AND job_id = :jid"),
+            text("SELECT job_role, interview_type FROM job_descriptions WHERE account_id = :aid AND job_id = :jid"),
             {"aid": account_id, "jid": job_id}
         ).mappings().fetchone()
 
@@ -549,6 +550,7 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
         candidate_email=payload.email,
         candidate_name=payload.candidate_name,
         job_role=job["job_role"],
+        interview_type=payload.interview_type or job["interview_type"] or "Technical Deep Dive",
         tech_stack=payload.tech_stack or "General Technical Evaluation",
         company_name=company_name,
         branch_name=branch_name,
