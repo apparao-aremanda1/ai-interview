@@ -99,10 +99,11 @@
     </main>
 
     <!-- STEP 2: LIVE INTERVIEW SCREEN -->
-    <main id="interviewContainer" class="hidden flex-grow max-w-6xl mx-auto w-full p-4 md:p-6 flex flex-col justify-between h-[calc(100vh-3.5rem)]">
+    <main id="interviewContainer" class="hidden flex-grow max-w-6xl mx-auto w-full p-4 md:p-6 flex flex-col h-[calc(100vh-3.5rem)] pb-28">
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow mb-6 overflow-hidden">
 
+            <!-- Left Side: Status Bar & Question Box -->
             <div class="md:col-span-2 flex flex-col gap-6">
                 <!-- Status Banner -->
                 <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex items-center justify-between shadow-xl shrink-0">
@@ -116,16 +117,15 @@
                     <div class="text-xs font-mono bg-slate-950 px-3 py-1.5 rounded border border-slate-800 text-slate-400 font-bold" id="timerDisplay">00:00</div>
                 </div>
 
-                <!-- Active Question Box -->
+                <!-- Active Question Box (Label Removed) -->
                 <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-10 flex flex-col justify-center items-center text-center shadow-xl flex-grow overflow-y-auto">
-                    <p class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-4">Current Active Question</p>
                     <h3 id="currentQuestionText" class="text-base sm:text-xl font-semibold text-white leading-relaxed max-w-2xl">
                         Establishing connection with AI interviewer...
                     </h3>
                 </div>
             </div>
 
-            <!-- Enlarged Live Proctored Feed -->
+            <!-- Right Side: Enlarged Live Proctored Feed -->
             <div class="md:col-span-1 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col shadow-xl">
                 <div class="flex items-center justify-between mb-3 shrink-0">
                     <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Proctored Feed</span>
@@ -140,7 +140,7 @@
 
         </div>
 
-        <!-- Bottom Controls (mb-16 adds clearance to push buttons above the screen sharing notification) -->
+        <!-- Bottom Controls -->
         <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 shadow-2xl flex items-center gap-3 shrink-0 mb-16">
             <button id="recordBtn" onclick="toggleRecording()" disabled class="flex-grow py-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition shadow flex items-center justify-center gap-2 cursor-pointer">
                 <span>🎙️</span> <span id="recordBtnText">Waiting for AI...</span>
@@ -276,7 +276,6 @@
                 if (interviewConfig.persona && interviewConfig.persona.includes("Female") && !interviewConfig.persona.includes("Indian")) engineVoice = "female";
                 if (interviewConfig.persona && interviewConfig.persona.includes("Male") && !interviewConfig.persona.includes("Indian")) engineVoice = "male";
 
-                // Pass hr_email instead of candidate_email so the report routes to HR
                 ws.send(JSON.stringify({
                     type: "start_session",
                     role: interviewConfig.job_role,
@@ -340,7 +339,12 @@
             if (!isRecording) {
                 try {
                     const audioStream = new MediaStream(cameraStream.getAudioTracks());
-                    mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
+
+                    // Optimized MediaRecorder to capture highly compressed audio
+                    mediaRecorder = new MediaRecorder(audioStream, {
+                        audioBitsPerSecond: 16000
+                    });
+
                     audioChunks = [];
 
                     mediaRecorder.ondataavailable = (event) => {
