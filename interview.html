@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0b0f19; }
+        body { font-family: 'Inter', sans-serif; background-color: #0b0f19; overflow: hidden; }
         .grid-bg {
             background-size: 40px 40px;
             background-image:
@@ -15,55 +15,50 @@
                 linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
         }
         .pulse-ring {
-            animation: pulse 2s infinite;
+            animation: pulse 1.5s infinite;
         }
         @keyframes pulse {
             0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(220, 38, 38, 0); }
+            70% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
             100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
         }
-        /* Custom Scrollbar for chat */
-        #chatContainer::-webkit-scrollbar { width: 6px; }
-        #chatContainer::-webkit-scrollbar-track { background: #0f172a; }
-        #chatContainer::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
     </style>
 </head>
-<body class="text-slate-100 min-h-screen flex flex-col grid-bg">
+<body class="text-slate-100 h-screen flex flex-col grid-bg select-none">
 
-    <header class="border-b border-slate-800/80 bg-[#0b0f19]/90 backdrop-blur-md sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+    <!-- Top Navigation -->
+    <header class="border-b border-slate-800/80 bg-[#0b0f19]/90 backdrop-blur-md h-14 shrink-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <div class="h-8 w-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-base text-white">K</div>
-                <span class="text-lg font-bold tracking-tight text-white">Kovi<span class="text-cyan-400">.ai</span></span>
+                <div class="h-7 w-7 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-sm text-white shadow-lg shadow-cyan-500/20">K</div>
+                <span class="text-base font-bold tracking-tight text-white">Kovi<span class="text-cyan-400">.ai</span></span>
             </div>
-            <div id="headerRole" class="text-sm font-semibold text-slate-400 hidden">Loading Role...</div>
+            <div id="headerRole" class="text-xs font-semibold text-slate-400 px-3 py-1 rounded bg-slate-800/60 border border-slate-700 hidden">Loading...</div>
         </div>
     </header>
 
     <!-- STEP 1: SETUP SCREEN -->
-    <main id="setupContainer" class="flex-grow max-w-5xl mx-auto w-full p-6 flex items-center justify-center">
-        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden w-full flex flex-col md:flex-row">
+    <main id="setupContainer" class="flex-grow max-w-4xl mx-auto w-full p-4 flex items-center justify-center">
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden w-full flex flex-col md:flex-row">
             <!-- Left Side: Instructions -->
-            <div class="w-full md:w-1/2 p-8 border-b md:border-b-0 md:border-r border-slate-800 bg-slate-900/50">
-                <h1 class="text-2xl font-bold text-white mb-2">Interview Setup</h1>
-                <p class="text-sm text-slate-400 mb-8">Please review the instructions below before starting your proctored AI technical screening.</p>
+            <div class="w-full md:w-1/2 p-6 border-b md:border-b-0 md:border-r border-slate-800 bg-slate-900/50">
+                <h1 class="text-xl font-bold text-white mb-1">Interview Setup</h1>
+                <p class="text-xs text-slate-400 mb-6">Review instructions before starting your proctored session.</p>
 
-                <div class="space-y-6">
+                <div class="space-y-4 text-xs">
                     <div>
-                        <h3 class="text-sm font-bold text-emerald-400 uppercase mb-3">✅ What to do</h3>
-                        <ul class="space-y-3 text-sm text-slate-300">
+                        <h3 class="font-bold text-emerald-400 uppercase mb-2">✅ What to do</h3>
+                        <ul class="space-y-2 text-slate-300">
                             <li>• Find a quiet, well-lit room with stable internet.</li>
-                            <li>• Speak clearly and directly into your microphone.</li>
+                            <li>• Speak clearly directly into your microphone.</li>
                             <li>• Share your <b>Entire Screen</b> when prompted.</li>
-                            <li>• Look directly at the camera while answering.</li>
                         </ul>
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-red-400 uppercase mb-3">❌ What NOT to do</h3>
-                        <ul class="space-y-3 text-sm text-slate-300">
-                            <li>• Do not switch browser tabs or open other apps.</li>
-                            <li>• Do not use mobile phones or secondary devices.</li>
-                            <li>• Do not have other people in the room.</li>
+                        <h3 class="font-bold text-red-400 uppercase mb-2">❌ What NOT to do</h3>
+                        <ul class="space-y-2 text-slate-300">
+                            <li>• Do not switch tabs or open other apps.</li>
+                            <li>• Do not use secondary devices or mobile phones.</li>
                             <li>• Do not read answers from prepared notes.</li>
                         </ul>
                     </div>
@@ -71,95 +66,103 @@
             </div>
 
             <!-- Right Side: Hardware Check -->
-            <div class="w-full md:w-1/2 p-8 flex flex-col items-center justify-center bg-slate-950">
-                <div class="w-full aspect-video bg-slate-900 border-2 border-dashed border-slate-700 rounded-xl mb-6 relative overflow-hidden flex items-center justify-center">
+            <div class="w-full md:w-1/2 p-6 flex flex-col items-center justify-center bg-slate-950">
+                <div class="w-full aspect-video bg-slate-900 border border-slate-800 rounded-xl mb-4 relative overflow-hidden flex items-center justify-center">
                     <video id="webcamPreview" autoplay muted playsinline class="w-full h-full object-cover hidden"></video>
-                    <div id="videoPlaceholder" class="text-center p-4">
-                        <div class="text-3xl mb-2">📷</div>
-                        <p class="text-xs text-slate-400">Camera preview</p>
+                    <div id="videoPlaceholder" class="text-center p-3">
+                        <div class="text-2xl mb-1">📷</div>
+                        <p class="text-[11px] text-slate-400">Camera preview</p>
                     </div>
                 </div>
 
-                <div class="w-full space-y-3 mb-8">
-                    <div class="flex items-center justify-between p-3 rounded-lg bg-slate-900 border border-slate-800">
-                        <span class="text-xs font-semibold text-slate-300">Camera & Mic</span>
-                        <span id="camStatus" class="text-xs font-bold text-slate-500">Pending</span>
+                <div class="w-full space-y-2 mb-6 text-xs">
+                    <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                        <span class="font-semibold text-slate-300">Camera & Mic</span>
+                        <span id="camStatus" class="font-bold text-slate-500">Pending</span>
                     </div>
-                    <div class="flex items-center justify-between p-3 rounded-lg bg-slate-900 border border-slate-800">
-                        <span class="text-xs font-semibold text-slate-300">Screen Share</span>
-                        <span id="screenStatus" class="text-xs font-bold text-slate-500">Pending</span>
+                    <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                        <span class="font-semibold text-slate-300">Screen Share</span>
+                        <span id="screenStatus" class="font-bold text-slate-500">Pending</span>
                     </div>
                 </div>
 
-                <button id="requestBtn" onclick="requestPermissions()" class="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold transition">
+                <button id="requestBtn" onclick="requestPermissions()" class="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition shadow-md">
                     1. Grant Permissions
                 </button>
 
-                <button id="startBtn" onclick="proceedToInterview()" disabled class="hidden w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition shadow-lg shadow-blue-600/30">
+                <button id="startBtn" onclick="proceedToInterview()" disabled class="hidden w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-md">
                     2. Connect to AI Interviewer
                 </button>
-                <div id="setupAlert" class="mt-4 text-xs font-medium text-red-400 text-center hidden"></div>
+                <div id="setupAlert" class="mt-3 text-xs font-medium text-red-400 text-center hidden"></div>
             </div>
         </div>
     </main>
 
     <!-- STEP 2: LIVE INTERVIEW SCREEN -->
-    <main id="interviewContainer" class="hidden flex-grow max-w-4xl mx-auto w-full p-6 flex flex-col">
+    <main id="interviewContainer" class="hidden flex-grow max-w-6xl mx-auto w-full p-4 md:p-6 flex flex-col justify-between h-[calc(100vh-3.5rem)]">
 
-        <!-- Status Banner -->
-        <div id="statusBanner" class="bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-4 mb-6 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <span id="aiIndicator" class="relative flex h-3 w-3">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
-                </span>
-                <span id="agentStatusText" class="text-sm font-semibold text-indigo-300">Connecting to AI Engine...</span>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow mb-6 overflow-hidden">
+
+            <div class="md:col-span-2 flex flex-col gap-6">
+                <!-- Status Banner -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex items-center justify-between shadow-xl shrink-0">
+                    <div class="flex items-center gap-2.5">
+                        <span id="aiIndicator" class="relative flex h-3 w-3">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                        </span>
+                        <span id="agentStatusText" class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-indigo-300">Connecting to AI...</span>
+                    </div>
+                    <div class="text-xs font-mono bg-slate-950 px-3 py-1.5 rounded border border-slate-800 text-slate-400 font-bold" id="timerDisplay">00:00</div>
+                </div>
+
+                <!-- Active Question Box -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-10 flex flex-col justify-center items-center text-center shadow-xl flex-grow overflow-y-auto">
+                    <p class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-4">Current Active Question</p>
+                    <h3 id="currentQuestionText" class="text-base sm:text-xl font-semibold text-white leading-relaxed max-w-2xl">
+                        Establishing connection with AI interviewer...
+                    </h3>
+                </div>
             </div>
-            <div class="text-xs text-slate-400 font-mono" id="timerDisplay">00:00</div>
+
+            <!-- Enlarged Live Proctored Feed -->
+            <div class="md:col-span-1 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col shadow-xl">
+                <div class="flex items-center justify-between mb-3 shrink-0">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Proctored Feed</span>
+                    <span class="bg-red-600/90 text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
+                        <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> REC
+                    </span>
+                </div>
+                <div class="w-full flex-grow rounded-xl bg-black relative overflow-hidden border border-slate-800 min-h-[200px]">
+                    <video id="liveWebcam" autoplay muted playsinline class="w-full h-full object-cover"></video>
+                </div>
+            </div>
+
         </div>
 
-        <!-- Chat Transcript Area -->
-        <div id="chatContainer" class="flex-grow bg-slate-900/60 border border-slate-800 rounded-2xl p-6 mb-6 overflow-y-auto space-y-4 min-h-[300px] max-h-[500px]">
-            <!-- Messages inject here -->
-        </div>
-
-        <!-- Controls -->
-        <div class="flex items-center gap-4">
-            <button id="recordBtn" onclick="toggleRecording()" disabled class="flex-grow py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition shadow-lg flex items-center justify-center gap-2">
+        <!-- Bottom Controls (mb-16 adds clearance to push buttons above the screen sharing notification) -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 shadow-2xl flex items-center gap-3 shrink-0 mb-16">
+            <button id="recordBtn" onclick="toggleRecording()" disabled class="flex-grow py-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition shadow flex items-center justify-center gap-2 cursor-pointer">
                 <span>🎙️</span> <span id="recordBtnText">Waiting for AI...</span>
             </button>
-            <button id="endBtn" onclick="endInterview()" disabled class="px-6 py-4 rounded-xl bg-slate-800 hover:bg-red-900/80 hover:text-red-300 hover:border-red-800 border border-slate-700 text-slate-400 font-bold text-sm transition">
+            <button id="endBtn" onclick="endInterview()" disabled class="px-6 py-4 rounded-lg bg-slate-800 hover:bg-red-950 hover:text-red-300 border border-slate-700 text-slate-400 font-bold text-sm transition">
                 End Session
             </button>
         </div>
     </main>
 
-    <!-- STEP 3: SCORECARD / COMPLETION SCREEN -->
-    <main id="scorecardContainer" class="hidden flex-grow max-w-3xl mx-auto w-full p-6 flex items-center justify-center">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-full shadow-2xl text-center">
-            <div class="w-16 h-16 rounded-full bg-emerald-900/50 flex items-center justify-center text-3xl mx-auto mb-4 border border-emerald-500/30">✅</div>
-            <h2 class="text-2xl font-bold text-white mb-2">Interview Complete</h2>
-            <p class="text-slate-400 text-sm mb-8">Thank you for your time. Your technical screening has been successfully recorded and evaluated.</p>
-
-            <div class="text-left bg-slate-950 p-6 rounded-xl border border-slate-800 space-y-4">
-                <div>
-                    <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">AI Recommendation</h4>
-                    <p id="reportRec" class="text-sm font-semibold text-emerald-400">Loading...</p>
-                </div>
-                <div>
-                    <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Key Strengths Detected</h4>
-                    <p id="reportStrengths" class="text-sm text-slate-300">Loading...</p>
-                </div>
-            </div>
-
-            <p class="mt-8 text-xs text-slate-500">You may now close this window. The HR team will contact you shortly.</p>
+    <!-- STEP 3: COMPLETION SCREEN -->
+    <main id="scorecardContainer" class="hidden flex-grow max-w-xl mx-auto w-full p-4 flex items-center justify-center">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-full shadow-2xl text-center space-y-4">
+            <div class="w-14 h-14 rounded-full bg-emerald-900/50 flex items-center justify-center text-2xl mx-auto border border-emerald-500/30">✅</div>
+            <h2 class="text-xl font-bold text-white">Interview Completed Successfully</h2>
+            <p class="text-slate-400 text-xs leading-relaxed">Thank you for your time and participation. Your session evaluation has been securely sent to the hiring team.</p>
+            <p class="text-[11px] text-slate-500 pt-2">You may now safely close this browser window.</p>
         </div>
     </main>
 
     <script>
-        // --- 1. CONFIGURATION & STATE ---
         const ATS_API_BASE = "http://127.0.0.1:8000";
-        // ASSUMPTION: Your ai_interview_engine (server.py) runs on port 8001
         const AI_ENGINE_WS_URL = "ws://127.0.0.1:8001/ws/interview";
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -177,14 +180,13 @@
         let startTime = null;
         let timerInterval = null;
 
-        // Fetch Interview Context from DB immediately
         async function fetchInterviewContext() {
             if (!candidateId || !jobId) return renderInvalidLink();
             try {
                 const res = await fetch(`${ATS_API_BASE}/api/interview-session?candidate_id=${candidateId}&job_id=${jobId}`);
                 if (!res.ok) throw new Error("Invalid session.");
                 interviewConfig = await res.json();
-                document.getElementById('headerRole').innerText = `${interviewConfig.job_role} Interview`;
+                document.getElementById('headerRole').innerText = `${interviewConfig.job_role}`;
                 document.getElementById('headerRole').classList.remove('hidden');
             } catch (err) {
                 renderInvalidLink();
@@ -194,19 +196,22 @@
 
         function renderInvalidLink() {
             document.getElementById('setupContainer').innerHTML = `
-                <div class="text-center bg-slate-900 border border-slate-800 rounded-2xl p-10 max-w-md w-full">
-                    <h2 class="text-red-400 text-xl font-bold mb-2">Invalid Link</h2>
-                    <p class="text-slate-400 text-sm">Session not found. Please contact HR.</p>
+                <div class="text-center bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full">
+                    <h2 class="text-red-400 text-lg font-bold mb-2">Invalid Link</h2>
+                    <p class="text-slate-400 text-xs">Session not found or link expired.</p>
                 </div>`;
         }
 
-        // --- 2. HARDWARE PERMISSIONS ---
         async function requestPermissions() {
             const alertBox = document.getElementById("setupAlert");
             alertBox.classList.add("hidden");
 
             try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: { echoCancellation: true, noiseSuppression: true } });
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: { echoCancellation: true, noiseSuppression: true }
+                });
+
                 const videoElement = document.getElementById('webcamPreview');
                 videoElement.srcObject = cameraStream;
                 videoElement.classList.remove("hidden");
@@ -225,13 +230,13 @@
                 document.getElementById('startBtn').classList.remove("hidden");
                 document.getElementById('startBtn').disabled = false;
             } catch (err) {
-                alertBox.innerText = `Permission Denied: Ensure Camera, Mic, and Screen Sharing are allowed.`;
+                alertBox.innerText = `Permission Denied: Please allow Camera, Microphone, and Screen Sharing.`;
                 alertBox.classList.remove("hidden");
             }
         }
 
         function handleScreenShareStop() {
-            document.getElementById("setupAlert").innerText = "Screen sharing stopped. You must share to continue.";
+            document.getElementById("setupAlert").innerText = "Screen sharing was stopped. You must share your screen to continue.";
             document.getElementById("setupAlert").classList.remove("hidden");
             document.getElementById('startBtn').classList.add("hidden");
             document.getElementById('requestBtn').classList.remove("hidden");
@@ -239,11 +244,12 @@
             document.getElementById('screenStatus').className = "text-xs font-bold text-red-400";
         }
 
-        // --- 3. LIVE INTERVIEW CORE ---
         function proceedToInterview() {
             document.getElementById('setupContainer').classList.add("hidden");
             document.getElementById('interviewContainer').classList.remove("hidden");
             document.getElementById('endBtn').disabled = false;
+
+            document.getElementById('liveWebcam').srcObject = cameraStream;
 
             startTime = Date.now();
             timerInterval = setInterval(updateTimer, 1000);
@@ -258,41 +264,25 @@
             document.getElementById('timerDisplay').innerText = `${m}:${s}`;
         }
 
-        function appendMessage(sender, text, type) {
-            const chat = document.getElementById('chatContainer');
-            const div = document.createElement('div');
-
-            if (type === 'ai') {
-                div.className = "bg-slate-800/80 border border-slate-700 rounded-2xl rounded-tl-sm p-4 max-w-[85%] float-left clear-both";
-                div.innerHTML = `<p class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1">${sender}</p><p class="text-sm text-slate-200 leading-relaxed">${text}</p>`;
-            } else if (type === 'candidate') {
-                div.className = "bg-cyan-900/40 border border-cyan-800/50 rounded-2xl rounded-tr-sm p-4 max-w-[85%] float-right clear-both";
-                div.innerHTML = `<p class="text-[10px] font-bold text-cyan-400 uppercase tracking-wider mb-1">You</p><p class="text-sm text-slate-200 leading-relaxed">${text}</p>`;
-            } else {
-                div.className = "text-center text-xs text-red-400 w-full clear-both py-2 font-medium";
-                div.innerText = text;
-            }
-
-            chat.appendChild(div);
-            chat.scrollTop = chat.scrollHeight;
+        function updateActiveQuestion(text) {
+            document.getElementById('currentQuestionText').innerText = text;
         }
 
         function initWebSocket() {
             ws = new WebSocket(AI_ENGINE_WS_URL);
 
             ws.onopen = () => {
-                // Map Persona to Voice Engine parameter
                 let engineVoice = "indian";
-                if (interviewConfig.persona.includes("Female") && !interviewConfig.persona.includes("Indian")) engineVoice = "female";
-                if (interviewConfig.persona.includes("Male") && !interviewConfig.persona.includes("Indian")) engineVoice = "male";
+                if (interviewConfig.persona && interviewConfig.persona.includes("Female") && !interviewConfig.persona.includes("Indian")) engineVoice = "female";
+                if (interviewConfig.persona && interviewConfig.persona.includes("Male") && !interviewConfig.persona.includes("Indian")) engineVoice = "male";
 
-                // Send the exact start_session payload server.py expects
+                // Pass hr_email instead of candidate_email so the report routes to HR
                 ws.send(JSON.stringify({
                     type: "start_session",
                     role: interviewConfig.job_role,
                     candidate_name: interviewConfig.candidate_name,
                     agent_name: "Kovi AI",
-                    hm_email: interviewConfig.candidate_email, // Routing evaluation back to ATS eventually
+                    hm_email: interviewConfig.hr_email,
                     tech_stack: interviewConfig.tech_stack,
                     seniority: interviewConfig.seniority,
                     round_type: interviewConfig.interview_type,
@@ -306,18 +296,17 @@
                 const statusTxt = document.getElementById('agentStatusText');
 
                 if (data.type === "transcription") {
-                    appendMessage("Candidate", data.text, "candidate");
-                    statusTxt.innerText = "AI is evaluating your response...";
+                    statusTxt.innerText = "AI is analyzing your answer...";
                     document.getElementById('aiIndicator').classList.remove('hidden');
                 }
                 else if (data.type === "ai_response") {
-                    appendMessage("AI Agent", data.text, "ai");
-                    statusTxt.innerText = "Ready for your answer.";
+                    updateActiveQuestion(data.text);
+                    statusTxt.innerText = "READY FOR YOUR ANSWER.";
                     document.getElementById('aiIndicator').classList.add('hidden');
 
                     recBtn.disabled = false;
-                    recBtn.innerHTML = `<span>🎙️</span> <span id="recordBtnText">Push to Speak</span>`;
-                    recBtn.className = "flex-grow py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition shadow-lg flex items-center justify-center gap-2";
+                    recBtn.innerHTML = `<span>🎙️</span> <span id="recordBtnText">Click to Speak</span>`;
+                    recBtn.className = "flex-grow py-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition shadow flex items-center justify-center gap-2 cursor-pointer";
 
                     if (data.audio_b64) {
                         const response = await fetch(`data:audio/wav;base64,${data.audio_b64}`);
@@ -326,28 +315,20 @@
                     }
                 }
                 else if (data.type === "evaluation_report") {
-                    try {
-                        const report = JSON.parse(data.report);
-                        document.getElementById('reportRec').innerText = report.final_recommendation;
-                        document.getElementById('reportStrengths').innerText = report.technical_strengths;
-
-                        document.getElementById('interviewContainer').classList.add("hidden");
-                        document.getElementById('scorecardContainer').classList.remove("hidden");
-                        clearInterval(timerInterval);
-                        if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
-                        if (screenStream) screenStream.getTracks().forEach(track => track.stop());
-                    } catch (err) {
-                        console.error("Scorecard error", err);
-                    }
+                    document.getElementById('interviewContainer').classList.add("hidden");
+                    document.getElementById('scorecardContainer').classList.remove("hidden");
+                    clearInterval(timerInterval);
+                    if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+                    if (screenStream) screenStream.getTracks().forEach(track => track.stop());
                 }
                 else if (data.type === "error") {
-                    appendMessage("System", data.text, "error");
+                    statusTxt.innerText = "Error: " + data.text;
                     recBtn.disabled = false;
                 }
             };
 
             ws.onclose = () => {
-                statusTxt.innerText = "Connection closed.";
+                document.getElementById('agentStatusText').innerText = "Disconnected.";
                 document.getElementById('aiIndicator').classList.add('hidden');
             };
         }
@@ -358,8 +339,8 @@
 
             if (!isRecording) {
                 try {
-                    // Re-use existing camera/mic stream
-                    mediaRecorder = new MediaRecorder(cameraStream);
+                    const audioStream = new MediaStream(cameraStream.getAudioTracks());
+                    mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
                     audioChunks = [];
 
                     mediaRecorder.ondataavailable = (event) => {
@@ -367,18 +348,17 @@
                     };
 
                     mediaRecorder.onstop = async () => {
-                        statusTxt.innerText = "Processing audio...";
+                        statusTxt.innerText = "Submitting audio...";
                         recBtn.disabled = true;
 
-                        // Send audio to AI Engine server.py exactly as it expects
                         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                         const reader = new FileReader();
                         reader.readAsDataURL(audioBlob);
                         reader.onloadend = () => {
                             const base64Audio = reader.result.split(',')[1];
                             let engineVoice = "indian";
-                            if (interviewConfig.persona.includes("Female") && !interviewConfig.persona.includes("Indian")) engineVoice = "female";
-                            if (interviewConfig.persona.includes("Male") && !interviewConfig.persona.includes("Indian")) engineVoice = "male";
+                            if (interviewConfig.persona && interviewConfig.persona.includes("Female") && !interviewConfig.persona.includes("Indian")) engineVoice = "female";
+                            if (interviewConfig.persona && interviewConfig.persona.includes("Male") && !interviewConfig.persona.includes("Indian")) engineVoice = "male";
 
                             ws.send(JSON.stringify({
                                 type: "audio_input",
@@ -390,9 +370,9 @@
 
                     mediaRecorder.start();
                     isRecording = true;
-                    recBtn.innerHTML = `<span class="w-3 h-3 rounded-full bg-white pulse-ring"></span> <span id="recordBtnText">Stop Speaking & Submit</span>`;
-                    recBtn.className = "flex-grow py-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm transition shadow-lg flex items-center justify-center gap-2";
-                    statusTxt.innerText = "Listening...";
+                    recBtn.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-white pulse-ring"></span> <span id="recordBtnText">Stop Speaking & Submit</span>`;
+                    recBtn.className = "flex-grow py-4 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-sm transition shadow flex items-center justify-center gap-2 cursor-pointer";
+                    statusTxt.innerText = "Listening to your answer...";
                 } catch (err) {
                     alert("Microphone Error: " + err.message);
                 }
@@ -401,17 +381,17 @@
                     mediaRecorder.stop();
                 }
                 isRecording = false;
-                recBtn.innerHTML = `<span>⏳</span> <span id="recordBtnText">Sending...</span>`;
-                recBtn.className = "flex-grow py-4 rounded-xl bg-slate-800 text-slate-400 font-bold text-sm transition flex items-center justify-center gap-2";
+                recBtn.innerHTML = `<span>⏳</span> <span id="recordBtnText">Processing...</span>`;
+                recBtn.className = "flex-grow py-4 rounded-lg bg-slate-800 text-slate-400 font-bold text-sm transition flex items-center justify-center gap-2";
             }
         }
 
         function endInterview() {
-            if (confirm("Are you sure you want to end the interview? The AI will generate your final evaluation.")) {
+            if (confirm("Are you sure you want to conclude the interview and submit for evaluation?")) {
                 ws.send(JSON.stringify({ type: "end_session" }));
                 document.getElementById('recordBtn').disabled = true;
                 document.getElementById('endBtn').disabled = true;
-                document.getElementById('agentStatusText').innerText = "Generating Scorecard...";
+                document.getElementById('agentStatusText').innerText = "Submitting Evaluation...";
                 document.getElementById('aiIndicator').classList.remove('hidden');
             }
         }

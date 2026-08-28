@@ -158,7 +158,8 @@ def send_activation_email(to_email: str, token: str):
         raise HTTPException(status_code=500, detail="Failed to send verification email.")
 
 
-def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_role: str, interview_type: str, interview_duration: int, tech_stack: str,
+def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_role: str, interview_type: str,
+                                interview_duration: int, tech_stack: str,
                                 company_name: str, branch_name: str, invite_link: str):
     smtp_host = os.getenv("SMTP_HOST")
     smtp_port = int(os.getenv("SMTP_PORT", 587))
@@ -263,7 +264,8 @@ class JDParsedData(BaseModel):
     job_role: str = Field(description="The primary job title, e.g., 'Senior AI Engineer'")
     seniority: str = Field(description="Seniority level, e.g., 'Senior / Lead Engineer'")
     interview_type: str = Field(description="Type of interview, e.g., 'Technical Deep Dive'")
-    tech_stack: str = Field(description="Comma-separated list of STRICTLY MANDATORY tools and languages. EXCLUDE any skills listed as 'optional', 'bonus', 'nice to have', or 'added advantage'.")
+    tech_stack: str = Field(
+        description="Comma-separated list of STRICTLY MANDATORY tools and languages. EXCLUDE any skills listed as 'optional', 'bonus', 'nice to have', or 'added advantage'.")
     persona: str = Field(description="Interviewer persona tone, e.g., 'Strict Technical Lead' or 'Friendly Mentor'")
     passing_score: float = Field(description="Minimum passing score out of 10, default to 7.5 if not specified.")
     skills_to_test: str = Field(description="Core competencies or skills to test. EXCLUDE optional/bonus skills.")
@@ -322,6 +324,32 @@ def serve_dashboard():
 @app.get("/interview.html")
 def serve_interview():
     return FileResponse("interview.html")
+
+
+# ==========================================
+# Fetch Context Endpoint for AI Chat
+# ==========================================
+@app.get("/api/interview-session")
+def get_interview_session(candidate_id: int, job_id: str):
+    with engine.connect() as conn:
+        # Join tables to accurately pull the HR's email address (branch_accounts.email)
+        query = text("""
+            SELECT 
+                j.job_role, j.seniority, j.interview_type, j.tech_stack, j.persona,
+                c.candidate_name, c.email as candidate_email, c.interview_duration,
+                b.email as hr_email
+            FROM job_descriptions j
+            JOIN candidates c ON j.job_id = c.job_id AND j.account_id = c.account_id
+            JOIN branch_accounts b ON j.account_id = b.account_id
+            WHERE c.candidate_id = :cid AND j.job_id = :jid
+        """)
+        result = conn.execute(query, {"cid": candidate_id, "jid": job_id}).mappings().fetchone()
+
+        if not result:
+            raise HTTPException(status_code=404, detail="Interview session not found or invalid link.")
+
+        return dict(result)
+
 
 # ==========================================
 # Authentication Endpoints
@@ -539,7 +567,6 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
         if not job:
             raise HTTPException(status_code=404, detail="Job opening not found.")
 
-        # Updated to include interview_duration
         query = text("""
             INSERT INTO candidates (account_id, job_id, candidate_name, email, mobile, status, interview_duration)
             VALUES (:aid, :jid, :name, :email, :mobile, 'invite_sent', :duration)
@@ -585,34 +612,3 @@ def get_job_candidates(job_id: str, current_account: dict = Depends(get_current_
         """)
         rows = conn.execute(query, {"aid": account_id, "jid": job_id}).mappings().all()
     return list(rows)
-
-
-@app.get("/api/interview-session")
-def get_interview_session(candidate_id: int, job_id: str):
-    with engine.connect() as conn:
-        # Fetch Job and Candidate data together
-        job = conn.execute(
-            text(
-                "SELECT job_role, seniority, interview_type, tech_stack, persona FROM job_descriptions WHERE job_id = :jid"),
-            {"jid": job_id}
-        ).mappings().fetchone()
-
-        cand = conn.execute(
-            text(
-                "SELECT candidate_name, email, interview_duration FROM candidates WHERE candidate_id = :cid AND job_id = :jid"),
-            {"cid": candidate_id, "jid": job_id}
-        ).mappings().fetchone()
-
-        if not job or not cand:
-            raise HTTPException(status_code=404, detail="Interview session not found or invalid link.")
-
-        return {
-            "job_role": job["job_role"],
-            "seniority": job["seniority"],
-            "interview_type": job["interview_type"],
-            "tech_stack": job["tech_stack"],
-            "persona": job["persona"],
-            "candidate_name": cand["candidate_name"],
-            "candidate_email": cand["email"],
-            "duration": cand["interview_duration"]
-        }
