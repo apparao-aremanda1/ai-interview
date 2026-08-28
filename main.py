@@ -263,10 +263,10 @@ class JDParsedData(BaseModel):
     job_role: str = Field(description="The primary job title, e.g., 'Senior AI Engineer'")
     seniority: str = Field(description="Seniority level, e.g., 'Senior / Lead Engineer'")
     interview_type: str = Field(description="Type of interview, e.g., 'Technical Deep Dive'")
-    tech_stack: str = Field(description="Comma-separated list of required tools and languages.")
+    tech_stack: str = Field(description="Comma-separated list of STRICTLY MANDATORY tools and languages. EXCLUDE any skills listed as 'optional', 'bonus', 'nice to have', or 'added advantage'.")
     persona: str = Field(description="Interviewer persona tone, e.g., 'Strict Technical Lead' or 'Friendly Mentor'")
     passing_score: float = Field(description="Minimum passing score out of 10, default to 7.5 if not specified.")
-    skills_to_test: str = Field(description="Core competencies or skills to test.")
+    skills_to_test: str = Field(description="Core competencies or skills to test. EXCLUDE optional/bonus skills.")
     must_questions: str = Field(description="Mandatory technical questions that must be asked during the interview.")
 
 
@@ -423,7 +423,9 @@ async def parse_jd(file: UploadFile = File(...), current_account: dict = Depends
 
     prompt = ChatPromptTemplate.from_messages([
         ("system",
-         "You are an expert technical recruiter. Extract the requested job details from the job description. Generate a sensible short job_id (e.g. JD-101) if not explicitly present."),
+         "You are an expert technical recruiter. Extract the requested job details from the job description. "
+         "Generate a sensible short job_id (e.g. JD-101) if not explicitly present. "
+         "IMPORTANT: When extracting the tech_stack and skills_to_test, include ONLY mandatory requirements. Completely ignore any skills listed as 'optional', 'added advantage', 'bonus', or 'nice to have'."),
         ("user", "{jd_text}")
     ])
     structured_llm = llm.with_structured_output(JDParsedData)
