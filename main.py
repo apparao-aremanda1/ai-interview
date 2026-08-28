@@ -319,6 +319,10 @@ def serve_dashboard():
     return FileResponse("dashboard.html")
 
 
+@app.get("/interview.html")
+def serve_interview():
+    return FileResponse("interview.html")
+
 # ==========================================
 # Authentication Endpoints
 # ==========================================
