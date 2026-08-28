@@ -84,7 +84,7 @@
                             <th class="py-3 px-4">Seniority</th>
                             <th class="py-3 px-4">Interview Type</th>
                             <th class="py-3 px-4">Tech Stack</th>
-                            <th class="py-3 px-4">Status</th>
+                            <th class="py-3 px-4 whitespace-nowrap cursor-pointer hover:text-white select-none transition" onclick="sortJobsByStatus()">Status <span id="jobSortIcon" class="text-[10px] ml-1">↕</span></th>
                             <th class="py-3 px-4">Candidates</th>
                             <th class="py-3 px-4 text-right">Actions</th>
                         </tr>
@@ -207,7 +207,7 @@
                             <th class="py-2.5 px-3">Name</th>
                             <th class="py-2.5 px-3">Email</th>
                             <th class="py-2.5 px-3">Mobile</th>
-                            <th class="py-2.5 px-3">Status</th>
+                            <th class="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:text-white select-none transition" onclick="sortCandidatesByStatus()">Status <span id="candSortIcon" class="text-[10px] ml-1">↕</span></th>
                         </tr>
                     </thead>
                     <tbody id="candidatesTableBody" class="divide-y divide-slate-800/50 text-slate-300">
@@ -226,8 +226,17 @@
     <script>
         const API_BASE = "http://127.0.0.1:8000";
         const token = localStorage.getItem("access_token");
+
         let activeJobId = null;
         let activeJobData = null;
+
+        // Data stores for local sorting
+        let allJobsList = [];
+        let currentCandidatesList = [];
+
+        // Tracking sort direction state
+        let jobSortAsc = true;
+        let candSortAsc = true;
 
         if (!token) {
             window.location.href = "auth.html";
@@ -241,6 +250,9 @@
             window.location.href = "auth.html";
         }
 
+        // ==========================
+        // JOBS MANAGEMENT & SORTING
+        // ==========================
         async function loadJobs() {
             try {
                 const response = await fetch(`${API_BASE}/api/jobs`, {
@@ -248,53 +260,83 @@
                 });
                 if (!response.ok) throw new Error("Failed to fetch jobs");
 
-                const jobs = await response.json();
-                const tbody = document.getElementById("jobsTableBody");
+                allJobsList = await response.json();
 
-                if (jobs.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-500">No job openings created yet. Upload a JD above to begin.</td></tr>`;
-                    return;
-                }
+                // Initial default sort: 'open' status appears first
+                allJobsList.sort((a, b) => {
+                    if (a.status === 'open' && b.status !== 'open') return -1;
+                    if (a.status !== 'open' && b.status === 'open') return 1;
+                    return 0;
+                });
 
-                tbody.innerHTML = jobs.map(j => {
-                    const isOpen = j.status === 'open';
-                    return `
-                        <tr class="hover:bg-slate-800/40 transition">
-                            <td class="py-4 px-4 font-semibold text-white">
-                                <div>${j.job_id}</div>
-                                <div class="text-xs text-indigo-400 font-normal">${j.job_role}</div>
-                            </td>
-                            <td class="py-4 px-4 text-slate-400">${j.seniority || 'N/A'}</td>
-                            <td class="py-4 px-4 text-slate-400">${j.interview_type || 'N/A'}</td>
-                            <td class="py-4 px-4 max-w-xs truncate text-xs text-slate-400">${j.tech_stack || 'N/A'}</td>
-                            <td class="py-4 px-4">
-                                <span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${isOpen ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-800' : 'bg-red-900/40 text-red-400 border border-red-800'}">
-                                    ${j.status}
-                                </span>
-                            </td>
-                            <td class="py-4 px-4 font-medium text-cyan-400">
-                                ${isOpen
-                                    ? `<button onclick="openCandidatesModal('${j.job_id}', '${j.job_role}')" class="hover:underline">${j.total_candidates} registered</button>`
-                                    : `<span class="text-slate-500">${j.total_candidates} registered</span>`
-                                }
-                            </td>
-                            <td class="py-4 px-4 text-right space-x-2">
-                                ${isOpen ? `
-                                <button onclick="openCandidatesModal('${j.job_id}', '${j.job_role}')" class="px-3 py-1.5 rounded-lg bg-indigo-600/30 border border-indigo-500/40 hover:bg-indigo-600/50 text-xs font-medium text-indigo-200 transition">
-                                    Manage Candidates
-                                </button>
-                                ` : ''}
-                                <button onclick="toggleStatus('${j.job_id}')" class="px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-300 transition">
-                                    ${isOpen ? 'Close' : 'Reopen'}
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
+                // Reset sorting icon
+                jobSortAsc = true;
+                document.getElementById("jobSortIcon").innerText = "↕";
+
+                renderJobsTable();
 
             } catch (err) {
                 console.error(err);
             }
+        }
+
+        function sortJobsByStatus() {
+            jobSortAsc = !jobSortAsc;
+            document.getElementById("jobSortIcon").innerText = jobSortAsc ? "↑" : "↓";
+
+            allJobsList.sort((a, b) => {
+                if (jobSortAsc) {
+                    return a.status.localeCompare(b.status);
+                } else {
+                    return b.status.localeCompare(a.status);
+                }
+            });
+            renderJobsTable();
+        }
+
+        function renderJobsTable() {
+            const tbody = document.getElementById("jobsTableBody");
+
+            if (allJobsList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-500">No job openings created yet. Upload a JD above to begin.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = allJobsList.map(j => {
+                const isOpen = j.status === 'open';
+                return `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="py-4 px-4 font-semibold text-white">
+                            <div>${j.job_id}</div>
+                            <div class="text-xs text-indigo-400 font-normal">${j.job_role}</div>
+                        </td>
+                        <td class="py-4 px-4 text-slate-400">${j.seniority || 'N/A'}</td>
+                        <td class="py-4 px-4 text-slate-400">${j.interview_type || 'N/A'}</td>
+                        <td class="py-4 px-4 max-w-xs truncate text-xs text-slate-400">${j.tech_stack || 'N/A'}</td>
+                        <td class="py-4 px-4">
+                            <span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${isOpen ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-800' : 'bg-red-900/40 text-red-400 border border-red-800'}">
+                                ${j.status}
+                            </span>
+                        </td>
+                        <td class="py-4 px-4 font-medium text-cyan-400">
+                            ${isOpen
+                                ? `<button onclick="openCandidatesModal('${j.job_id}', '${j.job_role}')" class="hover:underline">${j.total_candidates} registered</button>`
+                                : `<span class="text-slate-500">${j.total_candidates} registered</span>`
+                            }
+                        </td>
+                        <td class="py-4 px-4 text-right space-x-2">
+                            ${isOpen ? `
+                            <button onclick="openCandidatesModal('${j.job_id}', '${j.job_role}')" class="px-3 py-1.5 rounded-lg bg-indigo-600/30 border border-indigo-500/40 hover:bg-indigo-600/50 text-xs font-medium text-indigo-200 transition">
+                                Manage Candidates
+                            </button>
+                            ` : ''}
+                            <button onclick="toggleStatus('${j.job_id}')" class="px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-300 transition">
+                                ${isOpen ? 'Close' : 'Reopen'}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         async function parseAndSaveJD() {
@@ -318,7 +360,6 @@
             alertBox.classList.add("hidden");
 
             try {
-                // Parse JD
                 const parseRes = await fetch(`${API_BASE}/api/parse-jd`, {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${token}` },
@@ -327,10 +368,8 @@
                 const parsedData = await parseRes.json();
                 if (!parseRes.ok) throw new Error(parsedData.detail || "Failed to parse JD");
 
-                // Override Claude's generated interview type with the HR dropdown selection
                 parsedData.interview_type = selectedInterviewType;
 
-                // Save to DB
                 const saveRes = await fetch(`${API_BASE}/api/jobs`, {
                     method: "POST",
                     headers: {
@@ -366,6 +405,9 @@
             loadJobs();
         }
 
+        // ==========================
+        // CANDIDATES MANAGEMENT & SORT
+        // ==========================
         async function openCandidatesModal(jobId, jobRole) {
             activeJobId = jobId;
             document.getElementById("modalJobTitle").innerText = jobRole;
@@ -375,11 +417,8 @@
 
             resetUploadForm();
 
-            const res = await fetch(`${API_BASE}/api/jobs`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            const jobs = await res.json();
-            activeJobData = jobs.find(j => j.job_id === jobId);
+            // Store active job data for reference
+            activeJobData = allJobsList.find(j => j.job_id === jobId);
 
             loadCandidates(jobId);
         }
@@ -446,13 +485,12 @@
                 document.getElementById("formPassingScore").value = activeJobData.passing_score || "";
                 document.getElementById("formMustQuestions").value = activeJobData.must_questions || "";
 
-                // Set persona dropdown if matching value exists, otherwise default
                 const personaSelect = document.getElementById("formPersona");
                 let matchedPersona = Array.from(personaSelect.options).some(opt => opt.value === activeJobData.persona);
                 if (matchedPersona) {
                     personaSelect.value = activeJobData.persona;
                 } else {
-                    personaSelect.selectedIndex = 0; // Default to Friendly Indian Female
+                    personaSelect.selectedIndex = 0;
                 }
 
                 document.getElementById("uploadSection").classList.add("hidden");
@@ -507,7 +545,6 @@
                 setTimeout(() => {
                     resetUploadForm();
                     loadCandidates(activeJobId);
-                    loadJobs();
                 }, 1500);
 
             } catch (err) {
@@ -525,27 +562,60 @@
                 const res = await fetch(`${API_BASE}/api/jobs/${jobId}/candidates`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
-                const candidates = await res.json();
-                const tbody = document.getElementById("candidatesTableBody");
 
-                if (candidates.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-500">No candidates registered for this role yet.</td></tr>`;
-                    return;
-                }
+                currentCandidatesList = await res.json();
 
-                tbody.innerHTML = candidates.map(c => `
-                    <tr class="hover:bg-slate-800/30">
-                        <td class="py-2.5 px-3 font-semibold text-white">${c.candidate_name || 'N/A'}</td>
-                        <td class="py-2.5 px-3 text-slate-400">${c.email || 'N/A'}</td>
-                        <td class="py-2.5 px-3 text-slate-400">${c.mobile || 'N/A'}</td>
-                        <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800">${c.status}</span></td>
-                    </tr>
-                `).join('');
+                // Initial default sort: 'invite_sent' appears first
+                currentCandidatesList.sort((a, b) => {
+                    if (a.status === 'invite_sent' && b.status !== 'invite_sent') return -1;
+                    if (a.status !== 'invite_sent' && b.status === 'invite_sent') return 1;
+                    return 0;
+                });
+
+                // Reset sorting icon
+                candSortAsc = true;
+                document.getElementById("candSortIcon").innerText = "↕";
+
+                renderCandidatesTable();
+
             } catch (err) {
                 console.error(err);
             }
         }
 
+        function sortCandidatesByStatus() {
+            candSortAsc = !candSortAsc;
+            document.getElementById("candSortIcon").innerText = candSortAsc ? "↑" : "↓";
+
+            currentCandidatesList.sort((a, b) => {
+                if (candSortAsc) {
+                    return a.status.localeCompare(b.status);
+                } else {
+                    return b.status.localeCompare(a.status);
+                }
+            });
+            renderCandidatesTable();
+        }
+
+        function renderCandidatesTable() {
+            const tbody = document.getElementById("candidatesTableBody");
+
+            if (currentCandidatesList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-500">No candidates registered for this role yet.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = currentCandidatesList.map(c => `
+                <tr class="hover:bg-slate-800/30">
+                    <td class="py-2.5 px-3 font-semibold text-white">${c.candidate_name || 'N/A'}</td>
+                    <td class="py-2.5 px-3 text-slate-400">${c.email || 'N/A'}</td>
+                    <td class="py-2.5 px-3 text-slate-400">${c.mobile || 'N/A'}</td>
+                    <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800">${c.status}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // Initialize application
         loadJobs();
     </script>
 </body>

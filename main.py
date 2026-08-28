@@ -491,13 +491,16 @@ def save_job(payload: SaveJDRequest, current_account: dict = Depends(get_current
 def list_jobs(current_account: dict = Depends(get_current_account)):
     account_id = current_account["account_id"]
     with engine.connect() as conn:
+        # Added sorting: 'open' status first, then by created_at DESC
         query = text("""
             SELECT j.*, COUNT(c.candidate_id) as total_candidates
             FROM job_descriptions j
             LEFT JOIN candidates c ON j.account_id = c.account_id AND j.job_id = c.job_id
             WHERE j.account_id = :aid
             GROUP BY j.job_id, j.account_id
-            ORDER BY j.created_at DESC
+            ORDER BY 
+                CASE WHEN j.status = 'open' THEN 1 ELSE 2 END ASC,
+                j.created_at DESC
         """)
         rows = conn.execute(query, {"aid": account_id}).mappings().all()
     return list(rows)
@@ -566,10 +569,13 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
 def get_job_candidates(job_id: str, current_account: dict = Depends(get_current_account)):
     account_id = current_account["account_id"]
     with engine.connect() as conn:
+        # Added sorting: 'invite_sent' status first, then by created_at DESC
         query = text("""
             SELECT * FROM candidates 
             WHERE account_id = :aid AND job_id = :jid
-            ORDER BY created_at DESC
+            ORDER BY 
+                CASE WHEN status = 'invite_sent' THEN 1 ELSE 2 END ASC,
+                created_at DESC
         """)
         rows = conn.execute(query, {"aid": account_id, "jid": job_id}).mappings().all()
     return list(rows)
