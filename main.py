@@ -158,7 +158,7 @@ def send_activation_email(to_email: str, token: str):
         raise HTTPException(status_code=500, detail="Failed to send verification email.")
 
 
-def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_role: str, interview_type: str, tech_stack: str,
+def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_role: str, interview_type: str, interview_duration: int, tech_stack: str,
                                 company_name: str, branch_name: str, invite_link: str):
     smtp_host = os.getenv("SMTP_HOST")
     smtp_port = int(os.getenv("SMTP_PORT", 587))
@@ -192,7 +192,7 @@ def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_r
           <p style="font-size: 14px; color: #f8fafc; font-weight: bold; margin-top: 20px;">Interview Details:</p>
           <ul style="font-size: 14px; color: #cbd5e1; padding-left: 20px; margin-top: 5px;">
             <li><b>Assessment Type:</b> {interview_type} (AI-driven)</li>
-            <li><b>Time Commitment:</b> Approximately 30 minutes</li>
+            <li><b>Time Commitment:</b> Approximately {interview_duration} minutes</li>
             <li><b>Core Topics:</b> {tech_stack}</li>
           </ul>
 
@@ -220,7 +220,7 @@ def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_r
     </html>
     """
 
-    plain_text = f"Dear {candidate_name},\n\nCongratulations on advancing to the next stage of our selection process for the {job_role} position.\n\nTo better understand your technical background and problem-solving skills, we invite you to complete a conversational AI-driven technical screening.\n\nFormat: {interview_type}\nCore Topics: {tech_stack}\n\nPlease complete it before: {deadline_str}\n\nLaunch Assessment here: {invite_link}\n\nSincerely,\nThe {company_name} Hiring Team"
+    plain_text = f"Dear {candidate_name},\n\nCongratulations on advancing to the next stage of our selection process for the {job_role} position.\n\nTo better understand your technical background and problem-solving skills, we invite you to complete a conversational AI-driven technical screening.\n\nFormat: {interview_type}\nCore Topics: {tech_stack}\nDuration: up to {interview_duration} minutes\n\nPlease complete it before: {deadline_str}\n\nLaunch Assessment here: {invite_link}\n\nSincerely,\nThe {company_name} Hiring Team"
 
     msg.set_content(plain_text)
     msg.add_alternative(html_content, subtype='html')
@@ -294,6 +294,7 @@ class AddCandidateRequest(BaseModel):
     email: str
     mobile: str
     interview_type: Optional[str] = ""
+    interview_duration: Optional[int] = 30
     tech_stack: Optional[str] = ""
     persona: Optional[str] = ""
     passing_score: Optional[float] = None
@@ -491,7 +492,6 @@ def save_job(payload: SaveJDRequest, current_account: dict = Depends(get_current
 def list_jobs(current_account: dict = Depends(get_current_account)):
     account_id = current_account["account_id"]
     with engine.connect() as conn:
-        # Added sorting: 'open' status first, then by created_at DESC
         query = text("""
             SELECT j.*, COUNT(c.candidate_id) as total_candidates
             FROM job_descriptions j
@@ -535,9 +535,10 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
         if not job:
             raise HTTPException(status_code=404, detail="Job opening not found.")
 
+        # Updated to include interview_duration
         query = text("""
-            INSERT INTO candidates (account_id, job_id, candidate_name, email, mobile, status)
-            VALUES (:aid, :jid, :name, :email, :mobile, 'invite_sent')
+            INSERT INTO candidates (account_id, job_id, candidate_name, email, mobile, status, interview_duration)
+            VALUES (:aid, :jid, :name, :email, :mobile, 'invite_sent', :duration)
             RETURNING candidate_id
         """)
         cand_id = conn.execute(query, {
@@ -545,7 +546,8 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
             "jid": job_id,
             "name": payload.candidate_name,
             "email": payload.email,
-            "mobile": payload.mobile
+            "mobile": payload.mobile,
+            "duration": payload.interview_duration
         }).scalar()
         conn.commit()
 
@@ -556,6 +558,7 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
         candidate_name=payload.candidate_name,
         job_role=job["job_role"],
         interview_type=payload.interview_type or job["interview_type"] or "Technical Deep Dive",
+        interview_duration=payload.interview_duration,
         tech_stack=payload.tech_stack or "General Technical Evaluation",
         company_name=company_name,
         branch_name=branch_name,
@@ -569,7 +572,6 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
 def get_job_candidates(job_id: str, current_account: dict = Depends(get_current_account)):
     account_id = current_account["account_id"]
     with engine.connect() as conn:
-        # Added sorting: 'invite_sent' status first, then by created_at DESC
         query = text("""
             SELECT * FROM candidates 
             WHERE account_id = :aid AND job_id = :jid
