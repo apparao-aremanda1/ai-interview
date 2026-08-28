@@ -585,3 +585,34 @@ def get_job_candidates(job_id: str, current_account: dict = Depends(get_current_
         """)
         rows = conn.execute(query, {"aid": account_id, "jid": job_id}).mappings().all()
     return list(rows)
+
+
+@app.get("/api/interview-session")
+def get_interview_session(candidate_id: int, job_id: str):
+    with engine.connect() as conn:
+        # Fetch Job and Candidate data together
+        job = conn.execute(
+            text(
+                "SELECT job_role, seniority, interview_type, tech_stack, persona FROM job_descriptions WHERE job_id = :jid"),
+            {"jid": job_id}
+        ).mappings().fetchone()
+
+        cand = conn.execute(
+            text(
+                "SELECT candidate_name, email, interview_duration FROM candidates WHERE candidate_id = :cid AND job_id = :jid"),
+            {"cid": candidate_id, "jid": job_id}
+        ).mappings().fetchone()
+
+        if not job or not cand:
+            raise HTTPException(status_code=404, detail="Interview session not found or invalid link.")
+
+        return {
+            "job_role": job["job_role"],
+            "seniority": job["seniority"],
+            "interview_type": job["interview_type"],
+            "tech_stack": job["tech_stack"],
+            "persona": job["persona"],
+            "candidate_name": cand["candidate_name"],
+            "candidate_email": cand["email"],
+            "duration": cand["interview_duration"]
+        }
