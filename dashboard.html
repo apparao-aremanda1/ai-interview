@@ -149,6 +149,25 @@
                     </div>
                 </div>
 
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Interviewer Voice / Persona</label>
+                        <select id="formPersona" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                            <option value="Friendly Indian Female">Friendly Indian Female</option>
+                            <option value="Friendly Indian Male">Friendly Indian Male</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Passing Score (Editable)</label>
+                        <input type="number" step="0.1" id="formPassingScore" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Must-Ask Questions (Editable)</label>
+                    <textarea id="formMustQuestions" rows="2" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white"></textarea>
+                </div>
+
                 <div class="flex justify-end gap-3 pt-2">
                     <button onclick="resetUploadForm()" class="px-4 py-2 rounded-lg border border-slate-700 text-xs text-slate-300 hover:bg-slate-800">Cancel</button>
                     <button onclick="sendInvitationEmail()" id="sendInviteBtn" class="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-lg shadow-indigo-600/30">
@@ -336,7 +355,7 @@
             document.getElementById("reviewFormSection").classList.add("hidden");
             document.getElementById("resumeFile").value = "";
             document.getElementById("parseResumeAlert").classList.add("hidden");
-            document.getElementById("inviteAlert").classList.add("hidden"); // Clears leftover alert state
+            document.getElementById("inviteAlert").classList.add("hidden");
         }
 
         async function parseResume() {
@@ -357,7 +376,7 @@
             parseBtn.disabled = true;
             parseBtn.innerText = "Extracting...";
             alertBox.classList.add("hidden");
-            document.getElementById("inviteAlert").classList.add("hidden"); // Ensure invite alert starts hidden
+            document.getElementById("inviteAlert").classList.add("hidden");
 
             try {
                 const parseRes = await fetch(`${API_BASE}/api/parse-resume`, {
@@ -374,6 +393,17 @@
                 document.getElementById("formHrEmail").value = localStorage.getItem("email");
                 document.getElementById("formRole").value = activeJobData.job_role || "";
                 document.getElementById("formTechStack").value = activeJobData.tech_stack || "";
+                document.getElementById("formPassingScore").value = activeJobData.passing_score || "";
+                document.getElementById("formMustQuestions").value = activeJobData.must_questions || "";
+
+                // Set persona dropdown if matching value exists, otherwise default
+                const personaSelect = document.getElementById("formPersona");
+                let matched = Array.from(personaSelect.options).some(opt => opt.value === activeJobData.persona);
+                if (matched) {
+                    personaSelect.value = activeJobData.persona;
+                } else {
+                    personaSelect.selectedIndex = 0; // Default to Friendly Indian Female
+                }
 
                 document.getElementById("uploadSection").classList.add("hidden");
                 document.getElementById("reviewFormSection").classList.remove("hidden");
@@ -392,11 +422,15 @@
             const sendBtn = document.getElementById("sendInviteBtn");
             const alertBox = document.getElementById("inviteAlert");
 
+            const passingScoreVal = document.getElementById("formPassingScore").value;
             const payload = {
                 candidate_name: document.getElementById("formCandidateName").value,
                 email: document.getElementById("formCandidateEmail").value,
                 mobile: document.getElementById("formMobile").value,
-                tech_stack: document.getElementById("formTechStack").value
+                tech_stack: document.getElementById("formTechStack").value,
+                persona: document.getElementById("formPersona").value,
+                passing_score: passingScoreVal ? parseFloat(passingScoreVal) : null,
+                must_questions: document.getElementById("formMustQuestions").value
             };
 
             sendBtn.disabled = true;

@@ -56,65 +56,6 @@ llm = ChatAnthropic(
 )
 
 
-# --- Pydantic Schemas ---
-class SignUpRequest(BaseModel):
-    company_name: str
-    branch_name: str
-    email: EmailStr
-    password: str
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    company_name: str
-    branch_name: str
-    email: str
-
-
-class JDParsedData(BaseModel):
-    job_id: str = Field(description="A unique job reference code, e.g., 'JD-AI-101'")
-    job_role: str = Field(description="The primary job title, e.g., 'Senior AI Engineer'")
-    seniority: str = Field(description="Seniority level, e.g., 'Senior / Lead Engineer'")
-    interview_type: str = Field(description="Type of interview, e.g., 'Technical Deep Dive'")
-    tech_stack: str = Field(description="Comma-separated list of required tools and languages.")
-    persona: str = Field(description="Interviewer persona tone, e.g., 'Strict Technical Lead' or 'Friendly Mentor'")
-    passing_score: float = Field(description="Minimum passing score out of 10, default to 7.5 if not specified.")
-    skills_to_test: str = Field(description="Core competencies or skills to test.")
-    must_questions: str = Field(description="Mandatory technical questions that must be asked during the interview.")
-
-
-class SaveJDRequest(BaseModel):
-    job_id: str
-    job_role: str
-    seniority: Optional[str] = ""
-    interview_type: Optional[str] = ""
-    tech_stack: Optional[str] = ""
-    interviewer_voice: Optional[str] = "Professional Female (Emma)"
-    persona: Optional[str] = "Strict Technical Lead"
-    passing_score: Optional[float] = 7.0
-    skills_to_test: Optional[str] = ""
-    must_questions: Optional[str] = ""
-
-
-class ResumeParsedData(BaseModel):
-    candidate_name: str = Field(description="Full name of the candidate")
-    mobile_number: str = Field(description="Contact phone number")
-    email_id: str = Field(description="Email address of the candidate")
-
-
-class AddCandidateRequest(BaseModel):
-    candidate_name: str
-    email: str
-    mobile: str
-    tech_stack: Optional[str] = ""
-
-
 # --- Helper Utilities ---
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -242,44 +183,44 @@ def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_r
     <html>
       <body style="font-family: Arial, sans-serif; background-color: #0b0f19; padding: 30px; color: #f8fafc; line-height: 1.6;">
         <div style="max-width: 600px; background: #1e293b; padding: 35px; border-radius: 12px; border: 1px solid #334155;">
-          <p style="font-size: 15px; color: #f8fafc;">Hi <b>{candidate_name}</b>,</p>
+          <p style="font-size: 15px; color: #f8fafc;">Dear <b>{candidate_name}</b>,</p>
 
-          <p style="font-size: 14px; color: #cbd5e1;">You're just one step away from moving forward with the <b>{job_role}</b> role. You can review the role here.</p>
+          <p style="font-size: 14px; color: #cbd5e1;">Congratulations on advancing to the next stage of our selection process for the <b>{job_role}</b> position.</p>
 
-          <p style="font-size: 14px; color: #cbd5e1;">The next step is a brief, conversational AI interview where we get to know your experience, skills, and fit for the role.</p>
+          <p style="font-size: 14px; color: #cbd5e1;">To better understand your technical background and problem-solving skills, we invite you to complete a conversational AI-driven technical screening.</p>
 
-          <p style="font-size: 14px; color: #f8fafc; font-weight: bold; margin-top: 20px;">Here's what to expect:</p>
+          <p style="font-size: 14px; color: #f8fafc; font-weight: bold; margin-top: 20px;">Interview Details:</p>
           <ul style="font-size: 14px; color: #cbd5e1; padding-left: 20px; margin-top: 5px;">
-            <li><b>Format:</b> AI Interview</li>
-            <li><b>Estimated duration:</b> up to 30 minutes</li>
-            <li><b>Focus areas:</b> {tech_stack}</li>
+            <li><b>Assessment Type:</b> Interactive AI Voice Interview</li>
+            <li><b>Time Commitment:</b> Approximately 30 minutes</li>
+            <li><b>Core Topics:</b> {tech_stack}</li>
           </ul>
 
-          <p style="font-size: 14px; color: #cbd5e1; margin-top: 20px;">We typically fill roles quickly, so we recommend completing it before <b>{deadline_str}</b> (48 hours from now).</p>
+          <p style="font-size: 14px; color: #cbd5e1; margin-top: 20px;">Please ensure you complete this assessment no later than <b>{deadline_str}</b> to be considered for the current hiring cycle.</p>
 
-          <p style="font-size: 14px; color: #f8fafc; font-weight: bold; margin-top: 20px;">Before you begin</p>
+          <p style="font-size: 14px; color: #f8fafc; font-weight: bold; margin-top: 20px;">Preparation Checklist:</p>
           <ul style="font-size: 14px; color: #cbd5e1; padding-left: 20px; margin-top: 5px;">
-            <li>Find a quiet space with good and stable internet</li>
-            <li>Use a laptop/desktop for the best experience</li>
-            <li>Allow microphone and camera access when prompted</li>
-            <li>Be ready to share your screen</li>
+            <li>Choose a quiet environment with a reliable internet connection.</li>
+            <li>Log in from a laptop or desktop computer.</li>
+            <li>Ensure your microphone and camera permissions are enabled.</li>
+            <li>Prepare to share your screen if prompted during the technical questions.</li>
           </ul>
 
-          <p style="font-size: 14px; color: #cbd5e1; margin-top: 25px;">When you're ready, start your AI interview here:</p>
+          <p style="font-size: 14px; color: #cbd5e1; margin-top: 25px;">Access your personalized interview session below:</p>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="{invite_link}" style="background-color: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 14px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);">Start your AI interview</a>
+            <a href="{invite_link}" style="background-color: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 14px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);">Launch Assessment</a>
           </div>
 
-          <p style="font-size: 14px; color: #cbd5e1; margin-top: 20px;">We look forward to hearing your responses!</p>
+          <p style="font-size: 14px; color: #cbd5e1; margin-top: 20px;">We wish you the best of luck and look forward to reviewing your profile!</p>
 
-          <p style="font-size: 14px; color: #f8fafc; margin-top: 30px; margin-bottom: 0;">Best,<br><b>{company_name} team</b></p>
+          <p style="font-size: 14px; color: #f8fafc; margin-top: 30px; margin-bottom: 0;">Sincerely,<br><b>The {company_name} Hiring Team</b></p>
         </div>
       </body>
     </html>
     """
 
-    plain_text = f"Hi {candidate_name},\n\nYou're just one step away from moving forward with the {job_role} role. You can review the role here.\n\nThe next step is a brief, conversational AI interview.\n\nFocus areas: {tech_stack}\n\nComplete it before: {deadline_str}\n\nStart your AI interview here: {invite_link}\n\nBest,\n{company_name} team"
+    plain_text = f"Dear {candidate_name},\n\nCongratulations on advancing to the next stage of our selection process for the {job_role} position.\n\nTo better understand your technical background and problem-solving skills, we invite you to complete a conversational AI-driven technical screening.\n\nCore Topics: {tech_stack}\n\nPlease complete it before: {deadline_str}\n\nLaunch Assessment here: {invite_link}\n\nSincerely,\nThe {company_name} Hiring Team"
 
     msg.set_content(plain_text)
     msg.add_alternative(html_content, subtype='html')
@@ -295,7 +236,71 @@ def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_r
 
 
 # ==========================================
-# Authentication Endpoints
+# Pydantic Schemas
+# ==========================================
+class SignUpRequest(BaseModel):
+    company_name: str
+    branch_name: str
+    email: EmailStr
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    company_name: str
+    branch_name: str
+    email: str
+
+
+class JDParsedData(BaseModel):
+    job_id: str = Field(description="A unique job reference code, e.g., 'JD-AI-101'")
+    job_role: str = Field(description="The primary job title, e.g., 'Senior AI Engineer'")
+    seniority: str = Field(description="Seniority level, e.g., 'Senior / Lead Engineer'")
+    interview_type: str = Field(description="Type of interview, e.g., 'Technical Deep Dive'")
+    tech_stack: str = Field(description="Comma-separated list of required tools and languages.")
+    persona: str = Field(description="Interviewer persona tone, e.g., 'Strict Technical Lead' or 'Friendly Mentor'")
+    passing_score: float = Field(description="Minimum passing score out of 10, default to 7.5 if not specified.")
+    skills_to_test: str = Field(description="Core competencies or skills to test.")
+    must_questions: str = Field(description="Mandatory technical questions that must be asked during the interview.")
+
+
+class SaveJDRequest(BaseModel):
+    job_id: str
+    job_role: str
+    seniority: Optional[str] = ""
+    interview_type: Optional[str] = ""
+    tech_stack: Optional[str] = ""
+    interviewer_voice: Optional[str] = "Professional Female (Emma)"
+    persona: Optional[str] = "Strict Technical Lead"
+    passing_score: Optional[float] = 7.0
+    skills_to_test: Optional[str] = ""
+    must_questions: Optional[str] = ""
+
+
+class ResumeParsedData(BaseModel):
+    candidate_name: str = Field(description="Full name of the candidate")
+    mobile_number: str = Field(description="Contact phone number")
+    email_id: str = Field(description="Email address of the candidate")
+
+
+class AddCandidateRequest(BaseModel):
+    candidate_name: str
+    email: str
+    mobile: str
+    tech_stack: Optional[str] = ""
+    persona: Optional[str] = ""
+    passing_score: Optional[float] = None
+    must_questions: Optional[str] = ""
+
+
+# ==========================================
+# Frontend Page Routing Endpoints
 # ==========================================
 @app.get("/")
 def serve_home():
@@ -312,6 +317,9 @@ def serve_dashboard():
     return FileResponse("dashboard.html")
 
 
+# ==========================================
+# Authentication Endpoints
+# ==========================================
 @app.post("/api/auth/signup")
 def signup(payload: SignUpRequest):
     company = payload.company_name.strip()
@@ -407,7 +415,6 @@ def login(payload: LoginRequest):
 # ==========================================
 # AI Document Parsing Endpoints (Claude 3)
 # ==========================================
-
 @app.post("/api/parse-jd", response_model=JDParsedData)
 async def parse_jd(file: UploadFile = File(...), current_account: dict = Depends(get_current_account)):
     content = await file.read()
@@ -507,7 +514,8 @@ def toggle_job_status(job_id: str, current_account: dict = Depends(get_current_a
 
 
 @app.post("/api/jobs/{job_id}/candidates")
-def add_candidate(job_id: str, payload: AddCandidateRequest, current_account: dict = Depends(get_current_account)):
+def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
+                             current_account: dict = Depends(get_current_account)):
     account_id = current_account["account_id"]
     company_name = current_account["company_name"]
     branch_name = current_account["branch_name"]
