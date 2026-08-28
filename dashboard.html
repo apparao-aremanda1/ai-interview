@@ -84,13 +84,14 @@
                             <th class="py-3 px-4">Seniority</th>
                             <th class="py-3 px-4">Interview Type</th>
                             <th class="py-3 px-4">Tech Stack</th>
+                            <th class="py-3 px-4">Status</th>
                             <th class="py-3 px-4">Candidates</th>
                             <th class="py-3 px-4 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="jobsTableBody" class="divide-y divide-slate-800/60 text-slate-300">
                         <tr>
-                            <td colspan="6" class="py-6 text-center text-slate-500">Loading open job positions...</td>
+                            <td colspan="7" class="py-6 text-center text-slate-500">Loading open job positions...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -251,32 +252,45 @@
                 const tbody = document.getElementById("jobsTableBody");
 
                 if (jobs.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-500">No job openings created yet. Upload a JD above to begin.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-500">No job openings created yet. Upload a JD above to begin.</td></tr>`;
                     return;
                 }
 
-                tbody.innerHTML = jobs.map(j => `
-                    <tr class="hover:bg-slate-800/40 transition">
-                        <td class="py-4 px-4 font-semibold text-white">
-                            <div>${j.job_id}</div>
-                            <div class="text-xs text-indigo-400 font-normal">${j.job_role}</div>
-                        </td>
-                        <td class="py-4 px-4 text-slate-400">${j.seniority || 'N/A'}</td>
-                        <td class="py-4 px-4 text-slate-400">${j.interview_type || 'N/A'}</td>
-                        <td class="py-4 px-4 max-w-xs truncate text-xs text-slate-400">${j.tech_stack || 'N/A'}</td>
-                        <td class="py-4 px-4 font-medium text-cyan-400">
-                            <button onclick="openCandidatesModal('${j.job_id}', '${j.job_role}')" class="hover:underline">${j.total_candidates} registered</button>
-                        </td>
-                        <td class="py-4 px-4 text-right space-x-2">
-                            <button onclick="openCandidatesModal('${j.job_id}', '${j.job_role}')" class="px-3 py-1.5 rounded-lg bg-indigo-600/30 border border-indigo-500/40 hover:bg-indigo-600/50 text-xs font-medium text-indigo-200 transition">
-                                Manage Candidates
-                            </button>
-                            <button onclick="toggleStatus('${j.job_id}')" class="px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-300 transition">
-                                ${j.status === 'open' ? 'Close' : 'Reopen'}
-                            </button>
-                        </td>
-                    </tr>
-                `).join('');
+                tbody.innerHTML = jobs.map(j => {
+                    const isOpen = j.status === 'open';
+                    return `
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="py-4 px-4 font-semibold text-white">
+                                <div>${j.job_id}</div>
+                                <div class="text-xs text-indigo-400 font-normal">${j.job_role}</div>
+                            </td>
+                            <td class="py-4 px-4 text-slate-400">${j.seniority || 'N/A'}</td>
+                            <td class="py-4 px-4 text-slate-400">${j.interview_type || 'N/A'}</td>
+                            <td class="py-4 px-4 max-w-xs truncate text-xs text-slate-400">${j.tech_stack || 'N/A'}</td>
+                            <td class="py-4 px-4">
+                                <span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${isOpen ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-800' : 'bg-red-900/40 text-red-400 border border-red-800'}">
+                                    ${j.status}
+                                </span>
+                            </td>
+                            <td class="py-4 px-4 font-medium text-cyan-400">
+                                ${isOpen
+                                    ? `<button onclick="openCandidatesModal('${j.job_id}', '${j.job_role}')" class="hover:underline">${j.total_candidates} registered</button>`
+                                    : `<span class="text-slate-500">${j.total_candidates} registered</span>`
+                                }
+                            </td>
+                            <td class="py-4 px-4 text-right space-x-2">
+                                ${isOpen ? `
+                                <button onclick="openCandidatesModal('${j.job_id}', '${j.job_role}')" class="px-3 py-1.5 rounded-lg bg-indigo-600/30 border border-indigo-500/40 hover:bg-indigo-600/50 text-xs font-medium text-indigo-200 transition">
+                                    Manage Candidates
+                                </button>
+                                ` : ''}
+                                <button onclick="toggleStatus('${j.job_id}')" class="px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-300 transition">
+                                    ${isOpen ? 'Close' : 'Reopen'}
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
 
             } catch (err) {
                 console.error(err);
