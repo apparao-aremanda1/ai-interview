@@ -193,9 +193,10 @@
         let currentAudioPlayer = null;
         let interviewEnded = false;
 
-        const TIMEOUT_TO_START_SPEAKING = 15;
-        const TIMEOUT_OF_SILENCE = 5;
-        const VAD_THRESHOLD = 35;
+        // --- UPDATED TIMEOUTS ---
+        const TIMEOUT_TO_START_SPEAKING = 10; // Reduced from 15 to 10
+        const TIMEOUT_OF_SILENCE = 3.5;       // Reduced from 5 to 3.5
+        const VAD_THRESHOLD = 55;
 
         async function fetchInterviewContext() {
             if (!candidateId || !jobId) return renderInvalidLink();
@@ -336,6 +337,9 @@
                     if (data.audio_b64) {
                         const response = await fetch(`data:audio/wav;base64,${data.audio_b64}`);
                         const audioBlob = await response.blob();
+
+                        if (interviewEnded) return;
+
                         currentAudioPlayer = new Audio(URL.createObjectURL(audioBlob));
 
                         currentAudioPlayer.onended = () => {
@@ -423,26 +427,38 @@
 
             vadInterval = setInterval(() => {
                 analyser.getByteFrequencyData(dataArray);
-                let sum = 0;
-                for(let i = 0; i < dataArray.length; i++) { sum += dataArray[i]; }
-                let avgVolume = sum / dataArray.length;
 
-                volBar.style.width = Math.min(100, (avgVolume / 128) * 100) + '%';
-                volBar.style.backgroundColor = avgVolume > VAD_THRESHOLD ? '#10b981' : '#64748b';
+                let voiceEnergy = 0;
+                let validBins = 0;
 
-                if (avgVolume > VAD_THRESHOLD) {
+                for(let i = 2; i <= 16; i++) {
+                    voiceEnergy += dataArray[i];
+                    validBins++;
+                }
+
+                let avgVoiceVolume = voiceEnergy / validBins;
+
+                volBar.style.width = Math.min(100, (avgVoiceVolume / 128) * 100) + '%';
+                volBar.style.backgroundColor = avgVoiceVolume > VAD_THRESHOLD ? '#10b981' : '#64748b';
+
+                if (avgVoiceVolume > VAD_THRESHOLD) {
                     framesAboveThreshold++;
-                    lastSpokeTime = Date.now();
 
-                    if (!hasStartedSpeaking && framesAboveThreshold > 4) {
+                    // FIXED: The silence timer is now only reset if the noise is sustained for > 5 frames (0.5 seconds).
+                    // Brief background clicks or pops will no longer reset the auto-submit timer.
+                    if (framesAboveThreshold > 5) {
+                        lastSpokeTime = Date.now();
+                    }
+
+                    if (!hasStartedSpeaking && framesAboveThreshold > 15) {
                         hasStartedSpeaking = true;
                         clearInterval(countdownInterval);
-                        currentCountdown = TIMEOUT_OF_SILENCE;
+                        currentCountdown = Math.ceil(TIMEOUT_OF_SILENCE);
                         countdownEl.innerHTML = `Auto-submitting in <span id="secsLeft">${currentCountdown}</span>s of silence`;
 
                         countdownInterval = setInterval(() => {
-                            let secondsSilent = Math.floor((Date.now() - lastSpokeTime) / 1000);
-                            let remaining = TIMEOUT_OF_SILENCE - secondsSilent;
+                            let secondsSilent = (Date.now() - lastSpokeTime) / 1000;
+                            let remaining = Math.ceil(TIMEOUT_OF_SILENCE - secondsSilent);
                             document.getElementById('secsLeft').innerText = Math.max(0, remaining);
 
                             if (remaining <= 0) {
@@ -507,13 +523,7 @@
 
                 document.getElementById('overrideBtn').disabled = true;
                 document.getElementById('endBtn').disabled = true;
-                document.getElementById('agentStatusText').innerText = "Submitting Evaluation...";
-                document.getElementById('aiIndicator').classList.remove('hidden');
-
-                // Failsafe: Force show the completion screen if the backend hangs for more than 45 seconds
-                setTimeout(() => {
-                    forceShowScorecard();
-                }, 45000);
+                forceShowScorecard();
             }
         }
     </script>
