@@ -193,10 +193,10 @@
         let currentAudioPlayer = null;
         let interviewEnded = false;
 
-        // --- UPDATED TIMEOUTS ---
-        const TIMEOUT_TO_START_SPEAKING = 10; // Reduced from 15 to 10
-        const TIMEOUT_OF_SILENCE = 3.5;       // Reduced from 5 to 3.5
+        const TIMEOUT_TO_START_SPEAKING = 10;
+        const TIMEOUT_OF_SILENCE = 4.5;
         const VAD_THRESHOLD = 55;
+        const MAX_RECORDING_TIME = 120000;
 
         async function fetchInterviewContext() {
             if (!candidateId || !jobId) return renderInvalidLink();
@@ -397,6 +397,10 @@
             mediaRecorder.start();
             isRecording = true;
 
+            setTimeout(() => {
+                if (isRecording) stopAutoRecordingAndSubmit();
+            }, MAX_RECORDING_TIME);
+
             if (!audioContext) {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
             }
@@ -444,8 +448,6 @@
                 if (avgVoiceVolume > VAD_THRESHOLD) {
                     framesAboveThreshold++;
 
-                    // FIXED: The silence timer is now only reset if the noise is sustained for > 5 frames (0.5 seconds).
-                    // Brief background clicks or pops will no longer reset the auto-submit timer.
                     if (framesAboveThreshold > 5) {
                         lastSpokeTime = Date.now();
                     }
@@ -504,7 +506,8 @@
                 ws.send(JSON.stringify({
                     type: "audio_input",
                     audio_b64: base64Audio,
-                    voice: engineVoice
+                    voice: engineVoice,
+                    client_timestamp_ms: Date.now() // <--- ADDED: Critical for network telemetry
                 }));
             };
         }
