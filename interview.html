@@ -22,11 +22,11 @@
             70% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
             100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
         }
+        #volumeBar { transition: width 0.1s ease-in-out, background-color 0.1s; }
     </style>
 </head>
 <body class="text-slate-100 h-screen flex flex-col grid-bg select-none">
 
-    <!-- Top Navigation -->
     <header class="border-b border-slate-800/80 bg-[#0b0f19]/90 backdrop-blur-md h-14 shrink-0 z-50">
         <div class="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
             <div class="flex items-center space-x-3">
@@ -40,7 +40,6 @@
     <!-- STEP 1: SETUP SCREEN -->
     <main id="setupContainer" class="flex-grow max-w-4xl mx-auto w-full p-4 flex items-center justify-center">
         <div class="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden w-full flex flex-col md:flex-row">
-            <!-- Left Side: Instructions -->
             <div class="w-full md:w-1/2 p-6 border-b md:border-b-0 md:border-r border-slate-800 bg-slate-900/50">
                 <h1 class="text-xl font-bold text-white mb-1">Interview Setup</h1>
                 <p class="text-xs text-slate-400 mb-6">Review instructions before starting your proctored session.</p>
@@ -52,6 +51,7 @@
                             <li>• Find a quiet, well-lit room with stable internet.</li>
                             <li>• Speak clearly directly into your microphone.</li>
                             <li>• Share your <b>Entire Screen</b> when prompted.</li>
+                            <li>• Answer promptly. The AI will auto-detect your voice.</li>
                         </ul>
                     </div>
                     <div>
@@ -59,13 +59,12 @@
                         <ul class="space-y-2 text-slate-300">
                             <li>• Do not switch tabs or open other apps.</li>
                             <li>• Do not use secondary devices or mobile phones.</li>
-                            <li>• Do not read answers from prepared notes.</li>
+                            <li>• Do not take too long to answer (Auto-timeout applies).</li>
                         </ul>
                     </div>
                 </div>
             </div>
 
-            <!-- Right Side: Hardware Check -->
             <div class="w-full md:w-1/2 p-6 flex flex-col items-center justify-center bg-slate-950">
                 <div class="w-full aspect-video bg-slate-900 border border-slate-800 rounded-xl mb-4 relative overflow-hidden flex items-center justify-center">
                     <video id="webcamPreview" autoplay muted playsinline class="w-full h-full object-cover hidden"></video>
@@ -102,8 +101,6 @@
     <main id="interviewContainer" class="hidden flex-grow max-w-6xl mx-auto w-full p-4 md:p-6 flex flex-col h-[calc(100vh-3.5rem)] pb-28">
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow mb-6 overflow-hidden">
-
-            <!-- Left Side: Status Bar & Question Box -->
             <div class="md:col-span-2 flex flex-col gap-6">
                 <!-- Status Banner -->
                 <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex items-center justify-between shadow-xl shrink-0">
@@ -114,18 +111,27 @@
                         </span>
                         <span id="agentStatusText" class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-indigo-300">Connecting to AI...</span>
                     </div>
-                    <div class="text-xs font-mono bg-slate-950 px-3 py-1.5 rounded border border-slate-800 text-slate-400 font-bold" id="timerDisplay">00:00</div>
+                    <div class="flex items-center gap-4">
+                        <div id="countdownTimer" class="hidden text-[10px] font-bold text-amber-400 uppercase tracking-widest"></div>
+                        <div class="text-xs font-mono bg-slate-950 px-3 py-1.5 rounded border border-slate-800 text-slate-400 font-bold" id="timerDisplay">00:00</div>
+                    </div>
                 </div>
 
-                <!-- Active Question Box (Label Removed) -->
-                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-10 flex flex-col justify-center items-center text-center shadow-xl flex-grow overflow-y-auto">
+                <!-- Active Question Box -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-10 flex flex-col justify-center items-center text-center shadow-xl flex-grow overflow-y-auto relative">
+
+                    <!-- Volume Visualizer -->
+                    <div id="volumeContainer" class="hidden absolute top-0 left-0 w-full h-1.5 bg-slate-800 rounded-t-2xl overflow-hidden">
+                        <div id="volumeBar" class="h-full bg-slate-500 w-0"></div>
+                    </div>
+
                     <h3 id="currentQuestionText" class="text-base sm:text-xl font-semibold text-white leading-relaxed max-w-2xl">
                         Establishing connection with AI interviewer...
                     </h3>
                 </div>
             </div>
 
-            <!-- Right Side: Enlarged Live Proctored Feed -->
+            <!-- Enlarged Live Proctored Feed -->
             <div class="md:col-span-1 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col shadow-xl">
                 <div class="flex items-center justify-between mb-3 shrink-0">
                     <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Proctored Feed</span>
@@ -134,16 +140,15 @@
                     </span>
                 </div>
                 <div class="w-full flex-grow rounded-xl bg-black relative overflow-hidden border border-slate-800 min-h-[200px]">
-                    <video id="liveWebcam" autoplay muted playsinline class="w-full h-full object-cover"></video>
+                    <video id="liveWebcam" autoplay muted playsinline class="w-full h-full object-cover transform scale-x-[-1]"></video>
                 </div>
             </div>
-
         </div>
 
         <!-- Bottom Controls -->
         <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 shadow-2xl flex items-center gap-3 shrink-0 mb-16">
-            <button id="recordBtn" onclick="toggleRecording()" disabled class="flex-grow py-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition shadow flex items-center justify-center gap-2 cursor-pointer">
-                <span>🎙️</span> <span id="recordBtnText">Waiting for AI...</span>
+            <button id="overrideBtn" onclick="stopAutoRecordingAndSubmit()" disabled class="flex-grow py-4 rounded-lg bg-slate-800 text-slate-500 font-bold text-sm transition shadow flex items-center justify-center gap-2 cursor-not-allowed border border-slate-700">
+                <span id="overrideBtnText">Waiting for AI...</span>
             </button>
             <button id="endBtn" onclick="endInterview()" disabled class="px-6 py-4 rounded-lg bg-slate-800 hover:bg-red-950 hover:text-red-300 border border-slate-700 text-slate-400 font-bold text-sm transition">
                 End Session
@@ -176,9 +181,21 @@
 
         let mediaRecorder = null;
         let audioChunks = [];
-        let isRecording = false;
         let startTime = null;
         let timerInterval = null;
+
+        let audioContext = null;
+        let analyser = null;
+        let vadInterval = null;
+        let countdownInterval = null;
+        let isRecording = false;
+
+        let currentAudioPlayer = null;
+        let interviewEnded = false;
+
+        const TIMEOUT_TO_START_SPEAKING = 15;
+        const TIMEOUT_OF_SILENCE = 5;
+        const VAD_THRESHOLD = 35;
 
         async function fetchInterviewContext() {
             if (!candidateId || !jobId) return renderInvalidLink();
@@ -268,6 +285,14 @@
             document.getElementById('currentQuestionText').innerText = text;
         }
 
+        function forceShowScorecard() {
+            document.getElementById('interviewContainer').classList.add("hidden");
+            document.getElementById('scorecardContainer').classList.remove("hidden");
+            clearInterval(timerInterval);
+            if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+            if (screenStream) screenStream.getTracks().forEach(track => track.stop());
+        }
+
         function initWebSocket() {
             ws = new WebSocket(AI_ENGINE_WS_URL);
 
@@ -290,8 +315,9 @@
             };
 
             ws.onmessage = async (event) => {
+                if (interviewEnded) return;
+
                 const data = JSON.parse(event.data);
-                const recBtn = document.getElementById('recordBtn');
                 const statusTxt = document.getElementById('agentStatusText');
 
                 if (data.type === "transcription") {
@@ -300,103 +326,194 @@
                 }
                 else if (data.type === "ai_response") {
                     updateActiveQuestion(data.text);
-                    statusTxt.innerText = "READY FOR YOUR ANSWER.";
+                    statusTxt.innerText = "AI is speaking...";
                     document.getElementById('aiIndicator').classList.add('hidden');
 
-                    recBtn.disabled = false;
-                    recBtn.innerHTML = `<span>🎙️</span> <span id="recordBtnText">Click to Speak</span>`;
-                    recBtn.className = "flex-grow py-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition shadow flex items-center justify-center gap-2 cursor-pointer";
+                    if (currentAudioPlayer) {
+                        currentAudioPlayer.pause();
+                    }
 
                     if (data.audio_b64) {
                         const response = await fetch(`data:audio/wav;base64,${data.audio_b64}`);
                         const audioBlob = await response.blob();
-                        new Audio(URL.createObjectURL(audioBlob)).play();
+                        currentAudioPlayer = new Audio(URL.createObjectURL(audioBlob));
+
+                        currentAudioPlayer.onended = () => {
+                            if (!interviewEnded) startAutoRecording();
+                        };
+                        currentAudioPlayer.play();
                     }
                 }
                 else if (data.type === "evaluation_report") {
-                    document.getElementById('interviewContainer').classList.add("hidden");
-                    document.getElementById('scorecardContainer').classList.remove("hidden");
-                    clearInterval(timerInterval);
-                    if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
-                    if (screenStream) screenStream.getTracks().forEach(track => track.stop());
+                    interviewEnded = true;
+                    if (currentAudioPlayer) currentAudioPlayer.pause();
+                    forceShowScorecard();
                 }
                 else if (data.type === "error") {
                     statusTxt.innerText = "Error: " + data.text;
-                    recBtn.disabled = false;
                 }
             };
 
             ws.onclose = () => {
-                document.getElementById('agentStatusText').innerText = "Disconnected.";
-                document.getElementById('aiIndicator').classList.add('hidden');
+                if (!interviewEnded) {
+                    document.getElementById('agentStatusText').innerText = "Disconnected.";
+                    document.getElementById('aiIndicator').classList.add('hidden');
+                }
             };
         }
 
-        async function toggleRecording() {
-            const recBtn = document.getElementById('recordBtn');
+        function startAutoRecording() {
+            if (interviewEnded) return;
+
+            if (vadInterval) clearInterval(vadInterval);
+            if (countdownInterval) clearInterval(countdownInterval);
+
             const statusTxt = document.getElementById('agentStatusText');
+            const overrideBtn = document.getElementById('overrideBtn');
+            const overrideBtnText = document.getElementById('overrideBtnText');
+            const countdownEl = document.getElementById('countdownTimer');
+            const volContainer = document.getElementById('volumeContainer');
+            const volBar = document.getElementById('volumeBar');
 
-            if (!isRecording) {
-                try {
-                    const audioStream = new MediaStream(cameraStream.getAudioTracks());
+            statusTxt.innerText = "Listening for your answer...";
+            volContainer.classList.remove('hidden');
+            overrideBtn.disabled = false;
+            overrideBtnText.innerText = "Done Answering (Submit Early)";
+            overrideBtn.className = "flex-grow py-4 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-sm transition shadow cursor-pointer";
 
-                    // Optimized MediaRecorder to capture highly compressed audio
-                    mediaRecorder = new MediaRecorder(audioStream, {
-                        audioBitsPerSecond: 16000
-                    });
+            const audioStream = new MediaStream(cameraStream.getAudioTracks());
+            mediaRecorder = new MediaRecorder(audioStream, { audioBitsPerSecond: 16000 });
+            audioChunks = [];
 
-                    audioChunks = [];
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) audioChunks.push(event.data);
+            };
 
-                    mediaRecorder.ondataavailable = (event) => {
-                        if (event.data.size > 0) audioChunks.push(event.data);
-                    };
+            mediaRecorder.onstop = sendAudioToBackend;
+            mediaRecorder.start();
+            isRecording = true;
 
-                    mediaRecorder.onstop = async () => {
-                        statusTxt.innerText = "Submitting audio...";
-                        recBtn.disabled = true;
-
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        const reader = new FileReader();
-                        reader.readAsDataURL(audioBlob);
-                        reader.onloadend = () => {
-                            const base64Audio = reader.result.split(',')[1];
-                            let engineVoice = "indian";
-                            if (interviewConfig.persona && interviewConfig.persona.includes("Female") && !interviewConfig.persona.includes("Indian")) engineVoice = "female";
-                            if (interviewConfig.persona && interviewConfig.persona.includes("Male") && !interviewConfig.persona.includes("Indian")) engineVoice = "male";
-
-                            ws.send(JSON.stringify({
-                                type: "audio_input",
-                                audio_b64: base64Audio,
-                                voice: engineVoice
-                            }));
-                        };
-                    };
-
-                    mediaRecorder.start();
-                    isRecording = true;
-                    recBtn.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-white pulse-ring"></span> <span id="recordBtnText">Stop Speaking & Submit</span>`;
-                    recBtn.className = "flex-grow py-4 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-sm transition shadow flex items-center justify-center gap-2 cursor-pointer";
-                    statusTxt.innerText = "Listening to your answer...";
-                } catch (err) {
-                    alert("Microphone Error: " + err.message);
-                }
-            } else {
-                if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                    mediaRecorder.stop();
-                }
-                isRecording = false;
-                recBtn.innerHTML = `<span>⏳</span> <span id="recordBtnText">Processing...</span>`;
-                recBtn.className = "flex-grow py-4 rounded-lg bg-slate-800 text-slate-400 font-bold text-sm transition flex items-center justify-center gap-2";
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
             }
+            if (!analyser) {
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                const source = audioContext.createMediaStreamSource(audioStream);
+                source.connect(analyser);
+            }
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            let hasStartedSpeaking = false;
+            let lastSpokeTime = Date.now();
+            let framesAboveThreshold = 0;
+
+            let currentCountdown = TIMEOUT_TO_START_SPEAKING;
+            countdownEl.classList.remove('hidden');
+            countdownEl.innerHTML = `Timeout in <span id="secsLeft">${currentCountdown}</span>s`;
+
+            countdownInterval = setInterval(() => {
+                currentCountdown--;
+                document.getElementById('secsLeft').innerText = currentCountdown;
+                if (currentCountdown <= 0) {
+                    stopAutoRecordingAndSubmit();
+                }
+            }, 1000);
+
+            vadInterval = setInterval(() => {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for(let i = 0; i < dataArray.length; i++) { sum += dataArray[i]; }
+                let avgVolume = sum / dataArray.length;
+
+                volBar.style.width = Math.min(100, (avgVolume / 128) * 100) + '%';
+                volBar.style.backgroundColor = avgVolume > VAD_THRESHOLD ? '#10b981' : '#64748b';
+
+                if (avgVolume > VAD_THRESHOLD) {
+                    framesAboveThreshold++;
+                    lastSpokeTime = Date.now();
+
+                    if (!hasStartedSpeaking && framesAboveThreshold > 4) {
+                        hasStartedSpeaking = true;
+                        clearInterval(countdownInterval);
+                        currentCountdown = TIMEOUT_OF_SILENCE;
+                        countdownEl.innerHTML = `Auto-submitting in <span id="secsLeft">${currentCountdown}</span>s of silence`;
+
+                        countdownInterval = setInterval(() => {
+                            let secondsSilent = Math.floor((Date.now() - lastSpokeTime) / 1000);
+                            let remaining = TIMEOUT_OF_SILENCE - secondsSilent;
+                            document.getElementById('secsLeft').innerText = Math.max(0, remaining);
+
+                            if (remaining <= 0) {
+                                stopAutoRecordingAndSubmit();
+                            }
+                        }, 1000);
+                    }
+                } else {
+                    framesAboveThreshold = 0;
+                }
+            }, 100);
+        }
+
+        function stopAutoRecordingAndSubmit() {
+            if (!isRecording) return;
+
+            clearInterval(vadInterval);
+            clearInterval(countdownInterval);
+            document.getElementById('countdownTimer').classList.add('hidden');
+            document.getElementById('volumeContainer').classList.add('hidden');
+
+            const overrideBtn = document.getElementById('overrideBtn');
+            overrideBtn.disabled = true;
+            document.getElementById('overrideBtnText').innerText = "Processing...";
+            overrideBtn.className = "flex-grow py-4 rounded-lg bg-slate-800 text-slate-500 font-bold text-sm transition border border-slate-700 cursor-not-allowed";
+
+            mediaRecorder.stop();
+            isRecording = false;
+        }
+
+        function sendAudioToBackend() {
+            if (interviewEnded) return;
+
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
+            reader.onloadend = () => {
+                const base64Audio = reader.result.split(',')[1];
+                let engineVoice = "indian";
+                if (interviewConfig.persona && interviewConfig.persona.includes("Female") && !interviewConfig.persona.includes("Indian")) engineVoice = "female";
+                if (interviewConfig.persona && interviewConfig.persona.includes("Male") && !interviewConfig.persona.includes("Indian")) engineVoice = "male";
+
+                ws.send(JSON.stringify({
+                    type: "audio_input",
+                    audio_b64: base64Audio,
+                    voice: engineVoice
+                }));
+            };
         }
 
         function endInterview() {
             if (confirm("Are you sure you want to conclude the interview and submit for evaluation?")) {
+                interviewEnded = true;
+
+                if (currentAudioPlayer) {
+                    currentAudioPlayer.pause();
+                    currentAudioPlayer.currentTime = 0;
+                }
+
+                if (isRecording) stopAutoRecordingAndSubmit();
                 ws.send(JSON.stringify({ type: "end_session" }));
-                document.getElementById('recordBtn').disabled = true;
+
+                document.getElementById('overrideBtn').disabled = true;
                 document.getElementById('endBtn').disabled = true;
                 document.getElementById('agentStatusText').innerText = "Submitting Evaluation...";
                 document.getElementById('aiIndicator').classList.remove('hidden');
+
+                // Failsafe: Force show the completion screen if the backend hangs for more than 45 seconds
+                setTimeout(() => {
+                    forceShowScorecard();
+                }, 45000);
             }
         }
     </script>
