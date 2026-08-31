@@ -122,7 +122,7 @@
                     </div>
                 </div>
 
-                <!-- Active Question Box (UPDATED SCROLLING CLASSES) -->
+                <!-- Active Question Box -->
                 <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col justify-start items-center text-center shadow-xl flex-grow overflow-y-auto relative min-h-[300px] max-h-[420px]">
 
                     <!-- Volume Visualizer -->
@@ -197,6 +197,24 @@
         let interviewEnded = false;
 
         const MAX_RECORDING_TIME = 300000; // 5 minutes safety timeout
+
+        // Robust duration parser for numbers or strings like "Approximately 15 minutes"
+        function getInterviewDurationMinutes() {
+            if (!interviewConfig) return 15;
+
+            const rawDuration = interviewConfig.duration_minutes
+                             || interviewConfig.duration
+                             || interviewConfig.time_commitment
+                             || 15;
+
+            if (typeof rawDuration === 'number') {
+                return rawDuration;
+            }
+
+            // Extracts the digits (e.g. "Approximately 30 minutes" -> 30)
+            const match = String(rawDuration).match(/\d+/);
+            return match ? parseInt(match[0], 10) : 15;
+        }
 
         async function fetchInterviewContext() {
             if (!candidateId || !jobId) return renderInvalidLink();
@@ -284,6 +302,14 @@
             const m = String(Math.floor(diff / 60)).padStart(2, '0');
             const s = String(diff % 60).padStart(2, '0');
             document.getElementById('timerDisplay').innerText = `${m}:${s}`;
+
+            const maxMinutes = getInterviewDurationMinutes();
+            const maxSeconds = maxMinutes * 60;
+
+            if (diff >= maxSeconds && !interviewEnded) {
+                document.getElementById('agentStatusText').innerText = "Time limit reached. Auto-submitting...";
+                endInterview(true); // Forces the interview to end without asking for confirmation
+            }
         }
 
         function updateActiveQuestion(text) {
@@ -298,7 +324,6 @@
             if (screenStream) screenStream.getTracks().forEach(track => track.stop());
         }
 
-        // ADDED: Helper to resolve voice properly
         function resolveVoice() {
             const persona = (interviewConfig?.persona || "").toLowerCase();
             if (persona.includes("female")) return "female";
@@ -386,7 +411,6 @@
             const overrideBtnText = document.getElementById('overrideBtnText');
             const volContainer = document.getElementById('volumeContainer');
 
-            // Hide the old bouncing volume bar, we don't need it anymore
             if(volContainer) volContainer.classList.add('hidden');
 
             statusTxt.innerText = "Listening for your answer...";
@@ -394,7 +418,6 @@
             overrideBtnText.innerText = "Done Answering (Submit Early)";
             overrideBtn.className = "flex-grow py-4 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-sm transition shadow cursor-pointer";
 
-            // 1. Start your standard MediaRecorder
             const audioStream = new MediaStream(cameraStream.getAudioTracks());
             mediaRecorder = new MediaRecorder(audioStream, { audioBitsPerSecond: 16000 });
             audioChunks = [];
@@ -406,15 +429,11 @@
             mediaRecorder.start();
             isRecording = true;
 
-            // 2. Initialize the AI Voice Activity Detector
             try {
                 vadInstance = await vad.MicVAD.new({
-                    stream: audioStream, // Pass your existing noise-suppressed stream
-                    positiveSpeechThreshold: 0.8, // 80% confidence that it's human speech
+                    stream: audioStream,
+                    positiveSpeechThreshold: 0.8,
                     minSpeechFrames: 5,
-
-                    // UPDATED: redemptionFrames controls the silence timeout.
-                    // 1 frame = 30ms. 265 frames = exactly ~8 seconds of silence allowed.
                     redemptionFrames: 265,
 
                     onSpeechStart: () => {
@@ -430,7 +449,6 @@
                 vadInstance.start();
             } catch (err) {
                 console.error("Failed to start AI VAD:", err);
-                // Fallback safety timeout if VAD fails to load
                 setTimeout(() => {
                     if (isRecording) stopAutoRecordingAndSubmit();
                 }, MAX_RECORDING_TIME);
@@ -440,13 +458,11 @@
         function stopAutoRecordingAndSubmit() {
             if (!isRecording) return;
 
-            // Turn off the AI VAD
             if (vadInstance) {
                 vadInstance.pause();
                 vadInstance = null;
             }
 
-            // Cleanup UI
             document.getElementById('countdownTimer').classList.add('hidden');
             document.getElementById('volumeContainer').classList.add('hidden');
 
@@ -470,17 +486,23 @@
             reader.onloadend = () => {
                 const base64Audio = reader.result.split(',')[1];
 
+                // Wrap-up signal logic
+                const diff = Math.floor((Date.now() - startTime) / 1000);
+                const maxMinutes = getInterviewDurationMinutes();
+                const isWrapUp = diff >= ((maxMinutes - 1) * 60);
+
                 ws.send(JSON.stringify({
                     type: "audio_input",
                     audio_b64: base64Audio,
-                    voice: resolveVoice(), // UPDATED: Consistently resolves voice preference
-                    client_timestamp_ms: Date.now() // Critical for network telemetry
+                    voice: resolveVoice(),
+                    client_timestamp_ms: Date.now(),
+                    wrap_up: isWrapUp
                 }));
             };
         }
 
-        function endInterview() {
-            if (confirm("Are you sure you want to conclude the interview and submit for evaluation?")) {
+        function endInterview(force = false) {
+            if (force || confirm("Are you sure you want to conclude the interview and submit for evaluation?")) {
                 interviewEnded = true;
 
                 if (currentAudioPlayer) {
