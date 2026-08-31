@@ -122,15 +122,15 @@
                     </div>
                 </div>
 
-                <!-- Active Question Box -->
-                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col justify-start items-center text-center shadow-xl flex-grow overflow-y-auto relative max-h-[350px]">
+                <!-- Active Question Box (UPDATED SCROLLING CLASSES) -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col justify-start items-center text-center shadow-xl flex-grow overflow-y-auto relative min-h-[300px] max-h-[420px]">
 
                     <!-- Volume Visualizer -->
                     <div id="volumeContainer" class="hidden absolute top-0 left-0 w-full h-1.5 bg-slate-800 rounded-t-2xl overflow-hidden">
                         <div id="volumeBar" class="h-full bg-slate-500 w-0"></div>
                     </div>
 
-                    <h3 id="currentQuestionText" class="text-sm sm:text-lg font-semibold text-white leading-relaxed max-w-3xl overflow-y-auto pr-2 my-auto">
+                    <h3 id="currentQuestionText" class="text-sm sm:text-base font-semibold text-white leading-relaxed max-w-3xl overflow-y-auto max-h-[320px] pr-2 my-auto">
                         Establishing connection with AI interviewer...
                     </h3>
                 </div>
@@ -298,13 +298,19 @@
             if (screenStream) screenStream.getTracks().forEach(track => track.stop());
         }
 
+        // ADDED: Helper to resolve voice properly
+        function resolveVoice() {
+            const persona = (interviewConfig?.persona || "").toLowerCase();
+            if (persona.includes("female")) return "female";
+            if (persona.includes("male") || persona.includes("ryan")) return "male";
+            return "indian";
+        }
+
         function initWebSocket() {
             ws = new WebSocket(AI_ENGINE_WS_URL);
 
             ws.onopen = () => {
-                let engineVoice = "indian";
-                if (interviewConfig.persona && interviewConfig.persona.includes("Female") && !interviewConfig.persona.includes("Indian")) engineVoice = "female";
-                if (interviewConfig.persona && interviewConfig.persona.includes("Male") && !interviewConfig.persona.includes("Indian")) engineVoice = "male";
+                const engineVoice = resolveVoice();
 
                 ws.send(JSON.stringify({
                     type: "start_session",
@@ -407,9 +413,9 @@
                     positiveSpeechThreshold: 0.8, // 80% confidence that it's human speech
                     minSpeechFrames: 5,
 
-                    // redemptionFrames controls the silence timeout.
-                    // 1 frame = 30ms. 150 frames = exactly 4.5 seconds of silence allowed.
-                    redemptionFrames: 150,
+                    // UPDATED: redemptionFrames controls the silence timeout.
+                    // 1 frame = 30ms. 265 frames = exactly ~8 seconds of silence allowed.
+                    redemptionFrames: 265,
 
                     onSpeechStart: () => {
                         console.log("AI VAD: Human speaking detected.");
@@ -463,14 +469,11 @@
             reader.readAsDataURL(audioBlob);
             reader.onloadend = () => {
                 const base64Audio = reader.result.split(',')[1];
-                let engineVoice = "indian";
-                if (interviewConfig.persona && interviewConfig.persona.includes("Female") && !interviewConfig.persona.includes("Indian")) engineVoice = "female";
-                if (interviewConfig.persona && interviewConfig.persona.includes("Male") && !interviewConfig.persona.includes("Indian")) engineVoice = "male";
 
                 ws.send(JSON.stringify({
                     type: "audio_input",
                     audio_b64: base64Audio,
-                    voice: engineVoice,
+                    voice: resolveVoice(), // UPDATED: Consistently resolves voice preference
                     client_timestamp_ms: Date.now() // Critical for network telemetry
                 }));
             };
