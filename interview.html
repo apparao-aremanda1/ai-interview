@@ -304,6 +304,8 @@
 
                 ws.send(JSON.stringify({
                     type: "start_session",
+                    candidate_id: candidateId, // <--- ADD THIS
+                    job_id: jobId,             // <--- ADD THIS
                     role: interviewConfig.job_role,
                     candidate_name: interviewConfig.candidate_name,
                     agent_name: "Kovi AI",
