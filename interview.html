@@ -6,6 +6,11 @@
     <title>Kovi AI - Technical Interview</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- ADDED: AI Voice Activity Detection Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.7/dist/bundle.min.js"></script>
+
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0b0f19; overflow: hidden; }
         .grid-bg {
@@ -184,19 +189,14 @@
         let startTime = null;
         let timerInterval = null;
 
-        let audioContext = null;
-        let analyser = null;
-        let vadInterval = null;
-        let countdownInterval = null;
+        // VAD Variables
+        let vadInstance = null;
         let isRecording = false;
 
         let currentAudioPlayer = null;
         let interviewEnded = false;
 
-        const TIMEOUT_TO_START_SPEAKING = 10;
-        const TIMEOUT_OF_SILENCE = 4.5;
-        const VAD_THRESHOLD = 55;
-        const MAX_RECORDING_TIME = 300000;
+        const MAX_RECORDING_TIME = 300000; // 5 minutes safety timeout
 
         async function fetchInterviewContext() {
             if (!candidateId || !jobId) return renderInvalidLink();
@@ -227,7 +227,11 @@
             try {
                 cameraStream = await navigator.mediaDevices.getUserMedia({
                     video: true,
-                    audio: { echoCancellation: true, noiseSuppression: true }
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
                 });
 
                 const videoElement = document.getElementById('webcamPreview');
@@ -304,8 +308,8 @@
 
                 ws.send(JSON.stringify({
                     type: "start_session",
-                    candidate_id: candidateId, // <--- ADD THIS
-                    job_id: jobId,             // <--- ADD THIS
+                    candidate_id: candidateId,
+                    job_id: jobId,
                     role: interviewConfig.job_role,
                     candidate_name: interviewConfig.candidate_name,
                     agent_name: "Kovi AI",
@@ -368,25 +372,23 @@
             };
         }
 
-        function startAutoRecording() {
+        async function startAutoRecording() {
             if (interviewEnded) return;
-
-            if (vadInterval) clearInterval(vadInterval);
-            if (countdownInterval) clearInterval(countdownInterval);
 
             const statusTxt = document.getElementById('agentStatusText');
             const overrideBtn = document.getElementById('overrideBtn');
             const overrideBtnText = document.getElementById('overrideBtnText');
-            const countdownEl = document.getElementById('countdownTimer');
             const volContainer = document.getElementById('volumeContainer');
-            const volBar = document.getElementById('volumeBar');
+
+            // Hide the old bouncing volume bar, we don't need it anymore
+            if(volContainer) volContainer.classList.add('hidden');
 
             statusTxt.innerText = "Listening for your answer...";
-            volContainer.classList.remove('hidden');
             overrideBtn.disabled = false;
             overrideBtnText.innerText = "Done Answering (Submit Early)";
             overrideBtn.className = "flex-grow py-4 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-sm transition shadow cursor-pointer";
 
+            // 1. Start your standard MediaRecorder
             const audioStream = new MediaStream(cameraStream.getAudioTracks());
             mediaRecorder = new MediaRecorder(audioStream, { audioBitsPerSecond: 16000 });
             audioChunks = [];
@@ -394,93 +396,51 @@
             mediaRecorder.ondataavailable = (event) => {
                 if (event.data.size > 0) audioChunks.push(event.data);
             };
-
             mediaRecorder.onstop = sendAudioToBackend;
             mediaRecorder.start();
             isRecording = true;
 
-            setTimeout(() => {
-                if (isRecording) stopAutoRecordingAndSubmit();
-            }, MAX_RECORDING_TIME);
+            // 2. Initialize the AI Voice Activity Detector
+            try {
+                vadInstance = await vad.MicVAD.new({
+                    stream: audioStream, // Pass your existing noise-suppressed stream
+                    positiveSpeechThreshold: 0.8, // 80% confidence that it's human speech
+                    minSpeechFrames: 5,
 
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (!analyser) {
-                analyser = audioContext.createAnalyser();
-                analyser.fftSize = 256;
-                const source = audioContext.createMediaStreamSource(audioStream);
-                source.connect(analyser);
-            }
+                    // redemptionFrames controls the silence timeout.
+                    // 1 frame = 30ms. 150 frames = exactly 4.5 seconds of silence allowed.
+                    redemptionFrames: 150,
 
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-            let hasStartedSpeaking = false;
-            let lastSpokeTime = Date.now();
-            let framesAboveThreshold = 0;
-
-            let currentCountdown = TIMEOUT_TO_START_SPEAKING;
-            countdownEl.classList.remove('hidden');
-            countdownEl.innerHTML = `Timeout in <span id="secsLeft">${currentCountdown}</span>s`;
-
-            countdownInterval = setInterval(() => {
-                currentCountdown--;
-                document.getElementById('secsLeft').innerText = currentCountdown;
-                if (currentCountdown <= 0) {
-                    stopAutoRecordingAndSubmit();
-                }
-            }, 1000);
-
-            vadInterval = setInterval(() => {
-                analyser.getByteFrequencyData(dataArray);
-
-                let voiceEnergy = 0;
-                let validBins = 0;
-
-                for(let i = 2; i <= 16; i++) {
-                    voiceEnergy += dataArray[i];
-                    validBins++;
-                }
-
-                let avgVoiceVolume = voiceEnergy / validBins;
-
-                volBar.style.width = Math.min(100, (avgVoiceVolume / 128) * 100) + '%';
-                volBar.style.backgroundColor = avgVoiceVolume > VAD_THRESHOLD ? '#10b981' : '#64748b';
-
-                if (avgVoiceVolume > VAD_THRESHOLD) {
-                    framesAboveThreshold++;
-
-                    if (framesAboveThreshold > 5) {
-                        lastSpokeTime = Date.now();
+                    onSpeechStart: () => {
+                        console.log("AI VAD: Human speaking detected.");
+                        statusTxt.innerText = "Recording your answer...";
+                    },
+                    onSpeechEnd: (audio) => {
+                        console.log("AI VAD: Human finished speaking.");
+                        stopAutoRecordingAndSubmit();
                     }
+                });
 
-                    if (!hasStartedSpeaking && framesAboveThreshold > 15) {
-                        hasStartedSpeaking = true;
-                        clearInterval(countdownInterval);
-                        currentCountdown = Math.ceil(TIMEOUT_OF_SILENCE);
-                        countdownEl.innerHTML = `Auto-submitting in <span id="secsLeft">${currentCountdown}</span>s of silence`;
-
-                        countdownInterval = setInterval(() => {
-                            let secondsSilent = (Date.now() - lastSpokeTime) / 1000;
-                            let remaining = Math.ceil(TIMEOUT_OF_SILENCE - secondsSilent);
-                            document.getElementById('secsLeft').innerText = Math.max(0, remaining);
-
-                            if (remaining <= 0) {
-                                stopAutoRecordingAndSubmit();
-                            }
-                        }, 1000);
-                    }
-                } else {
-                    framesAboveThreshold = 0;
-                }
-            }, 100);
+                vadInstance.start();
+            } catch (err) {
+                console.error("Failed to start AI VAD:", err);
+                // Fallback safety timeout if VAD fails to load
+                setTimeout(() => {
+                    if (isRecording) stopAutoRecordingAndSubmit();
+                }, MAX_RECORDING_TIME);
+            }
         }
 
         function stopAutoRecordingAndSubmit() {
             if (!isRecording) return;
 
-            clearInterval(vadInterval);
-            clearInterval(countdownInterval);
+            // Turn off the AI VAD
+            if (vadInstance) {
+                vadInstance.pause();
+                vadInstance = null;
+            }
+
+            // Cleanup UI
             document.getElementById('countdownTimer').classList.add('hidden');
             document.getElementById('volumeContainer').classList.add('hidden');
 
@@ -489,7 +449,9 @@
             document.getElementById('overrideBtnText').innerText = "Processing...";
             overrideBtn.className = "flex-grow py-4 rounded-lg bg-slate-800 text-slate-500 font-bold text-sm transition border border-slate-700 cursor-not-allowed";
 
-            mediaRecorder.stop();
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+            }
             isRecording = false;
         }
 
@@ -509,7 +471,7 @@
                     type: "audio_input",
                     audio_b64: base64Audio,
                     voice: engineVoice,
-                    client_timestamp_ms: Date.now() // <--- ADDED: Critical for network telemetry
+                    client_timestamp_ms: Date.now() // Critical for network telemetry
                 }));
             };
         }
