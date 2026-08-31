@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- ADDED: AI Voice Activity Detection Libraries -->
+    <!-- AI Voice Activity Detection Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.7/dist/bundle.min.js"></script>
 
@@ -124,8 +124,6 @@
 
                 <!-- Active Question Box -->
                 <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col justify-start items-center text-center shadow-xl flex-grow overflow-y-auto relative min-h-[300px] max-h-[420px]">
-
-                    <!-- Volume Visualizer -->
                     <div id="volumeContainer" class="hidden absolute top-0 left-0 w-full h-1.5 bg-slate-800 rounded-t-2xl overflow-hidden">
                         <div id="volumeBar" class="h-full bg-slate-500 w-0"></div>
                     </div>
@@ -136,7 +134,7 @@
                 </div>
             </div>
 
-            <!-- Enlarged Live Proctored Feed -->
+            <!-- Proctored Feed -->
             <div class="md:col-span-1 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col shadow-xl">
                 <div class="flex items-center justify-between mb-3 shrink-0">
                     <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Proctored Feed</span>
@@ -189,31 +187,38 @@
         let startTime = null;
         let timerInterval = null;
 
-        // VAD Variables
         let vadInstance = null;
         let isRecording = false;
+        let isAiSpeaking = false;
 
         let currentAudioPlayer = null;
         let interviewEnded = false;
 
-        const MAX_RECORDING_TIME = 300000; // 5 minutes safety timeout
+        const MAX_RECORDING_TIME = 300000;
 
-        // Robust duration parser for numbers or strings like "Approximately 15 minutes"
+        // STRICT DB PARSER: NO MORE HARDCODED FALLBACKS
         function getInterviewDurationMinutes() {
-            if (!interviewConfig) return 15;
-
-            const rawDuration = interviewConfig.duration_minutes
-                             || interviewConfig.duration
-                             || interviewConfig.time_commitment
-                             || 15;
-
-            if (typeof rawDuration === 'number') {
-                return rawDuration;
+            if (!interviewConfig) {
+                console.error("Interview config is missing.");
+                throw new Error("Missing interview config.");
             }
 
-            // Extracts the digits (e.g. "Approximately 30 minutes" -> 30)
-            const match = String(rawDuration).match(/\d+/);
-            return match ? parseInt(match[0], 10) : 15;
+            // Strictly fetch the exact column from the DB
+            const raw = interviewConfig.interview_duration;
+
+            if (raw === undefined || raw === null || raw === "") {
+                alert("Error: No interview time limit was set in the database. Please contact HR.");
+                throw new Error("Missing duration in DB.");
+            }
+
+            if (typeof raw === 'number') return raw;
+            const match = String(raw).match(/\d+/);
+            if (match) {
+                return parseInt(match[0], 10);
+            } else {
+                alert("Error: Invalid time limit format in the database.");
+                throw new Error("Invalid duration format.");
+            }
         }
 
         async function fetchInterviewContext() {
@@ -307,8 +312,12 @@
             const maxSeconds = maxMinutes * 60;
 
             if (diff >= maxSeconds && !interviewEnded) {
-                document.getElementById('agentStatusText').innerText = "Time limit reached. Auto-submitting...";
-                endInterview(true); // Forces the interview to end without asking for confirmation
+                if (isAiSpeaking) {
+                    document.getElementById('agentStatusText').innerText = "Wrapping up interview...";
+                } else {
+                    document.getElementById('agentStatusText').innerText = "Time limit reached. Concluding session...";
+                    endInterview(true);
+                }
             }
         }
 
@@ -372,6 +381,7 @@
                     }
 
                     if (data.audio_b64) {
+                        isAiSpeaking = true;
                         const response = await fetch(`data:audio/wav;base64,${data.audio_b64}`);
                         const audioBlob = await response.blob();
 
@@ -380,6 +390,15 @@
                         currentAudioPlayer = new Audio(URL.createObjectURL(audioBlob));
 
                         currentAudioPlayer.onended = () => {
+                            isAiSpeaking = false;
+
+                            const diff = Math.floor((Date.now() - startTime) / 1000);
+                            const maxSeconds = getInterviewDurationMinutes() * 60;
+                            if (diff >= maxSeconds && !interviewEnded) {
+                                endInterview(true);
+                                return;
+                            }
+
                             if (!interviewEnded) startAutoRecording();
                         };
                         currentAudioPlayer.play();
@@ -411,7 +430,7 @@
             const overrideBtnText = document.getElementById('overrideBtnText');
             const volContainer = document.getElementById('volumeContainer');
 
-            if(volContainer) volContainer.classList.add('hidden');
+            if (volContainer) volContainer.classList.add('hidden');
 
             statusTxt.innerText = "Listening for your answer...";
             overrideBtn.disabled = false;
@@ -432,23 +451,22 @@
             try {
                 vadInstance = await vad.MicVAD.new({
                     stream: audioStream,
-                    positiveSpeechThreshold: 0.8,
-                    minSpeechFrames: 5,
-                    redemptionFrames: 265,
+                    positiveSpeechThreshold: 0.85,
+                    negativeSpeechThreshold: 0.65,
+                    minSpeechFrames: 6,
+                    redemptionFrames: 100,
 
                     onSpeechStart: () => {
-                        console.log("AI VAD: Human speaking detected.");
                         statusTxt.innerText = "Recording your answer...";
                     },
-                    onSpeechEnd: (audio) => {
-                        console.log("AI VAD: Human finished speaking.");
+                    onSpeechEnd: () => {
                         stopAutoRecordingAndSubmit();
                     }
                 });
 
                 vadInstance.start();
             } catch (err) {
-                console.error("Failed to start AI VAD:", err);
+                console.error("VAD start error:", err);
                 setTimeout(() => {
                     if (isRecording) stopAutoRecordingAndSubmit();
                 }, MAX_RECORDING_TIME);
@@ -486,7 +504,6 @@
             reader.onloadend = () => {
                 const base64Audio = reader.result.split(',')[1];
 
-                // Wrap-up signal logic
                 const diff = Math.floor((Date.now() - startTime) / 1000);
                 const maxMinutes = getInterviewDurationMinutes();
                 const isWrapUp = diff >= ((maxMinutes - 1) * 60);
