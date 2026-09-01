@@ -205,19 +205,21 @@
                             <th class="py-2.5 px-3">Name</th>
                             <th class="py-2.5 px-3">Email</th>
                             <th class="py-2.5 px-3">Mobile</th>
+                            <th class="py-2.5 px-3">Interview Type</th>
                             <th class="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:text-white select-none transition" onclick="sortCandidatesByStatus()">Status <span id="candSortIcon" class="text-[10px] ml-1">↕</span></th>
-                            <th class="py-2.5 px-3 text-right">Actions</th>
+                            <th class="py-2.5 px-3 text-right">Report</th>
+                            <th class="py-2.5 px-3 text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody id="candidatesTableBody" class="divide-y divide-slate-800/50 text-slate-300">
-                        <tr><td colspan="5" class="py-4 text-center text-slate-500">Select a job to view candidates.</td></tr>
+                        <tr><td colspan="7" class="py-4 text-center text-slate-500">Select a job to view candidates.</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- AI Scorecard & Report Modal (New Feature) -->
+    <!-- AI Scorecard & Report Modal -->
     <div id="reportModal" class="hidden fixed inset-0 z-[60] items-center justify-center bg-black/80 backdrop-blur-sm p-4">
         <div class="bg-[#0f172a] border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <!-- Modal Header -->
@@ -266,7 +268,44 @@
                 <button onclick="closeReportModal()" class="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-600 transition">
                     Close
                 </button>
-                <div id="modalActionContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Next Stage Modal -->
+    <div id="nextRoundModal" class="hidden fixed inset-0 z-[70] items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-[#0f172a] border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-[#1e293b]">
+                <h3 class="text-lg font-bold text-white">Schedule Next Stage</h3>
+                <button onclick="closeNextRoundModal()" class="text-slate-400 hover:text-white transition text-sm font-semibold">✕ Close</button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Select Next Round / Action</label>
+                    <select id="nextRoundType" onchange="toggleNextRoundFields()" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <option value="Technical Round (AI)">Technical Round (AI)</option>
+                        <option value="Design Discussion (AI)">Design Discussion (AI)</option>
+                        <option value="Selected">Selected (Hire)</option>
+                    </select>
+                </div>
+                <div id="nextRoundDetails" class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Duration (Mins)</label>
+                        <input type="number" id="nextRoundDuration" value="45" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Deadline (Hours)</label>
+                        <select id="nextRoundDeadline" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                            <option value="24">24 Hours</option>
+                            <option value="48" selected>48 Hours</option>
+                            <option value="72">72 Hours</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-700 bg-[#1e293b] flex justify-end gap-3">
+                <button onclick="closeNextRoundModal()" class="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-lg border border-slate-600 transition">Cancel</button>
+                <button onclick="submitNextRound()" id="submitNextBtn" class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition">Proceed</button>
             </div>
         </div>
     </div>
@@ -649,38 +688,42 @@
             const tbody = document.getElementById("candidatesTableBody");
 
             if (currentCandidatesList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-500">No candidates registered for this role yet.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-500">No candidates registered for this role yet.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = currentCandidatesList.map(c => {
-                let actionButton = `<span class="text-slate-500 text-[10px]">-</span>`;
+                const interviewType = activeJobData ? activeJobData.interview_type : 'N/A';
+                let reportButton = `<span class="text-slate-500 text-[10px]">-</span>`;
+                let actionLink = `<span class="text-slate-500 text-[10px]">-</span>`;
                 let statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800">${c.status}</span>`;
 
                 if (c.status === "Pass") {
                     statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-900/80 text-emerald-300 border border-emerald-800">Pass</span>`;
-                    actionButton = `
+                    reportButton = `
                         <button onclick="openReportModalById('${c.candidate_id}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs transition border border-blue-500">
                             📄 View Report
                         </button>
                     `;
+                    actionLink = `<button onclick="openNextRoundModal('${c.candidate_id}')" class="text-indigo-400 hover:text-indigo-300 font-semibold text-xs underline">Next Step →</button>`;
                 } else if (c.status === "Fail") {
                     statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-900/80 text-red-300 border border-red-800">Fail</span>`;
-                    actionButton = `
+                    reportButton = `
                         <button onclick="openReportModalById('${c.candidate_id}')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-xs transition border border-slate-600">
                             📄 View Report
                         </button>
                     `;
                 }
 
-                // Added whitespace-nowrap to guarantee one-line presentation
                 return `
                 <tr class="hover:bg-slate-800/30">
                     <td class="py-2.5 px-3 font-semibold text-white whitespace-nowrap">${c.candidate_name || 'N/A'}</td>
                     <td class="py-2.5 px-3 text-slate-400 whitespace-nowrap">${c.email || 'N/A'}</td>
                     <td class="py-2.5 px-3 text-slate-400 whitespace-nowrap">${c.mobile || 'N/A'}</td>
+                    <td class="py-2.5 px-3 text-slate-400 whitespace-nowrap">${interviewType}</td>
                     <td class="py-2.5 px-3 whitespace-nowrap">${statusBadge}</td>
-                    <td class="py-2.5 px-3 text-right whitespace-nowrap">${actionButton}</td>
+                    <td class="py-2.5 px-3 text-right whitespace-nowrap">${reportButton}</td>
+                    <td class="py-2.5 px-3 text-right whitespace-nowrap">${actionLink}</td>
                 </tr>
                 `;
             }).join('');
@@ -693,7 +736,7 @@
             const candidate = currentCandidatesList.find(c => String(c.candidate_id) === String(candidateId));
             if (!candidate) return;
 
-            document.getElementById('modalScore').innerText = candidate.feedback ? candidate.feedback.split(' ')[1] : 'N/A'; // Expecting format like "Score: 6.5/10"
+            document.getElementById('modalScore').innerText = candidate.feedback ? candidate.feedback.split(' ')[1] : 'N/A';
             document.getElementById('modalStrengths').innerText = candidate.technical_strengths || 'No strengths recorded.';
             document.getElementById('modalWeaknesses').innerText = candidate.areas_for_improvement || 'No areas for improvement recorded.';
 
@@ -706,18 +749,6 @@
                 recBadge.className = 'px-3 py-1 text-sm font-bold rounded-full bg-red-900/80 text-red-300 border border-red-700';
             }
 
-            const actionContainer = document.getElementById('modalActionContainer');
-            if (candidate.status === 'Pass') {
-                actionContainer.innerHTML = `
-                    <button onclick="moveToNextRound('${candidate.candidate_id}', '${activeJobId}')"
-                            class="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-lg shadow-blue-500/20 transition border border-blue-500">
-                        Move to Next Round →
-                    </button>
-                `;
-            } else {
-                actionContainer.innerHTML = '';
-            }
-
             document.getElementById('reportModal').classList.remove('hidden');
             document.getElementById('reportModal').classList.add('flex');
         }
@@ -727,24 +758,55 @@
             document.getElementById('reportModal').classList.remove('flex');
         }
 
-        async function moveToNextRound(candidateId, jobId) {
-            if(!confirm("Advance this candidate to the Human Technical Round? An email invite will be sent.")) return;
+        // ==========================
+        // NEXT STAGE SCHEDULING MODAL
+        // ==========================
+        let activeNextRoundCandidate = null;
+
+        function openNextRoundModal(candidateId) {
+            activeNextRoundCandidate = candidateId;
+            document.getElementById('nextRoundModal').classList.remove('hidden');
+            document.getElementById('nextRoundModal').classList.add('flex');
+            toggleNextRoundFields();
+        }
+
+        function closeNextRoundModal() {
+            document.getElementById('nextRoundModal').classList.add('hidden');
+            document.getElementById('nextRoundModal').classList.remove('flex');
+            activeNextRoundCandidate = null;
+        }
+
+        function toggleNextRoundFields() {
+            const type = document.getElementById('nextRoundType').value;
+            const detailsDiv = document.getElementById('nextRoundDetails');
+            detailsDiv.style.display = (type === 'Selected') ? 'none' : 'grid';
+        }
+
+        async function submitNextRound() {
+            const type = document.getElementById('nextRoundType').value;
+            const duration = document.getElementById('nextRoundDuration').value;
+            const deadline = document.getElementById('nextRoundDeadline').value;
+            const btn = document.getElementById('submitNextBtn');
+
+            btn.disabled = true;
+            btn.innerText = "Processing...";
 
             try {
-                // Ensure your ATS FastAPI backend has this route implemented to update the status in PostgreSQL
                 const response = await fetch(`${API_BASE}/api/candidates/advance`, {
                     method: 'POST',
-                    headers: {
-                        "Authorization": `Bearer ${token}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ candidate_id: candidateId, job_id: jobId, new_status: 'Round 2 Scheduled' })
+                    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        candidate_id: activeNextRoundCandidate,
+                        job_id: activeJobId,
+                        new_status: type,
+                        duration: parseInt(duration) || 0,
+                        deadline_hours: parseInt(deadline) || 48
+                    })
                 });
 
                 if (response.ok) {
-                    alert("Candidate successfully advanced!");
-                    closeReportModal();
-                    loadCandidates(jobId);
+                    closeNextRoundModal();
+                    loadCandidates(activeJobId);
                 } else {
                     const errorData = await response.json();
                     alert("Failed to advance candidate: " + (errorData.detail || "Unknown error"));
@@ -752,6 +814,9 @@
             } catch (error) {
                 console.error("Error advancing candidate:", error);
                 alert("Error advancing candidate. Check the console.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Proceed";
             }
         }
 

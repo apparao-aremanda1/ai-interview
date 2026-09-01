@@ -1,4 +1,5 @@
 import io
+import logging
 import os
 import smtplib
 from datetime import datetime, timedelta, timezone
@@ -7,7 +8,8 @@ from typing import Optional
 
 import PyPDF2
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
+from fastapi import FastAPI, UploadFile, File
+from fastapi import HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -15,7 +17,8 @@ from jose import jwt, JWTError
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 from passlib.context import CryptContext
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel
+from pydantic import Field, EmailStr
 from sqlalchemy import create_engine, text
 
 load_dotenv()
@@ -26,6 +29,8 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-key-change-in-prod-12345")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
+
+logger = logging.getLogger(__name__)
 
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL is missing in environment variables.")
@@ -160,13 +165,14 @@ def send_activation_email(to_email: str, token: str):
 
 def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_role: str, interview_type: str,
                                 interview_duration: int, tech_stack: str,
-                                company_name: str, branch_name: str, invite_link: str):
+                                company_name: str, branch_name: str, invite_link: str, deadline_hours: int = 48):
     smtp_host = os.getenv("SMTP_HOST")
     smtp_port = int(os.getenv("SMTP_PORT", 587))
     smtp_user = os.getenv("SMTP_USER")
     smtp_pass = os.getenv("SMTP_PASS")
 
-    deadline_str = (datetime.now() + timedelta(hours=48)).strftime("%B %d, %Y at %I:%M %p")
+    # Dynamic Deadline Calculation
+    deadline_str = (datetime.now() + timedelta(hours=deadline_hours)).strftime("%B %d, %Y at %I:%M %p")
 
     if not smtp_host or not smtp_user or not smtp_pass:
         print("\n==============================")
@@ -332,11 +338,11 @@ def serve_interview():
 @app.get("/api/interview-session")
 def get_interview_session(candidate_id: int, job_id: str):
     with engine.connect() as conn:
-        # Join tables to accurately pull the HR's email address (branch_accounts.email)
+        # Added c.expiry_time to enforce deadlines
         query = text("""
             SELECT 
                 j.job_role, j.seniority, j.interview_type, j.tech_stack, j.persona,
-                c.candidate_name, c.email as candidate_email, c.interview_duration,
+                c.candidate_name, c.email as candidate_email, c.interview_duration, c.expiry_time,
                 b.email as hr_email
             FROM job_descriptions j
             JOIN candidates c ON j.job_id = c.job_id AND j.account_id = c.account_id
@@ -347,6 +353,20 @@ def get_interview_session(candidate_id: int, job_id: str):
 
         if not result:
             raise HTTPException(status_code=404, detail="Interview session not found or invalid link.")
+
+        # STRICT DEADLINE ENFORCEMENT
+        if result["expiry_time"]:
+            current_time = datetime.now(timezone.utc)
+            expiry = result["expiry_time"]
+
+            if expiry.tzinfo is None:
+                expiry = expiry.replace(tzinfo=timezone.utc)
+
+            if current_time > expiry:
+                raise HTTPException(
+                    status_code=403,
+                    detail="This interview link has expired. The deadline to complete this assessment has passed."
+                )
 
         return dict(result)
 
@@ -567,9 +587,12 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
         if not job:
             raise HTTPException(status_code=404, detail="Job opening not found.")
 
+        # Ensure initial rounds also receive the 48 hour default deadline tracking in DB
+        expiry_time = datetime.now(timezone.utc) + timedelta(hours=48)
+
         query = text("""
-            INSERT INTO candidates (account_id, job_id, candidate_name, email, mobile, status, interview_duration)
-            VALUES (:aid, :jid, :name, :email, :mobile, 'invite_sent', :duration)
+            INSERT INTO candidates (account_id, job_id, candidate_name, email, mobile, status, interview_duration, expiry_time)
+            VALUES (:aid, :jid, :name, :email, :mobile, 'invite_sent', :duration, :expiry)
             RETURNING candidate_id
         """)
         cand_id = conn.execute(query, {
@@ -578,7 +601,8 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
             "name": payload.candidate_name,
             "email": payload.email,
             "mobile": payload.mobile,
-            "duration": payload.interview_duration
+            "duration": payload.interview_duration,
+            "expiry": expiry_time
         }).scalar()
         conn.commit()
 
@@ -612,3 +636,75 @@ def get_job_candidates(job_id: str, current_account: dict = Depends(get_current_
         """)
         rows = conn.execute(query, {"aid": account_id, "jid": job_id}).mappings().all()
     return list(rows)
+
+
+# Define the expected payload from the dashboard
+class AdvanceCandidateRequest(BaseModel):
+    candidate_id: str
+    job_id: str
+    new_status: str
+    duration: int = 45
+    deadline_hours: int = 48
+
+
+@app.post("/api/candidates/advance")
+async def advance_candidate(request: AdvanceCandidateRequest):
+    try:
+        with engine.connect() as conn:
+            # 1. Verify candidate details
+            query = text("""
+                SELECT c.candidate_name, c.email, j.job_role, b.company_name, b.branch_name, j.tech_stack
+                FROM candidates c
+                JOIN job_descriptions j ON c.job_id = j.job_id AND c.account_id = j.account_id
+                JOIN branch_accounts b ON c.account_id = b.account_id
+                WHERE c.candidate_id = :cid AND c.job_id = :jid
+            """)
+            candidate = conn.execute(query, {"cid": request.candidate_id, "jid": request.job_id}).fetchone()
+
+            if not candidate:
+                raise HTTPException(status_code=404, detail="Candidate not found.")
+
+            candidate_name, candidate_email, job_role, company_name, branch_name, tech_stack = candidate[0], candidate[
+                1], candidate[2], candidate[3], candidate[4], candidate[5]
+
+            # 2. Update candidate status
+            expiry_time = datetime.now(timezone.utc) + timedelta(hours=request.deadline_hours)
+
+            update_query = text("""
+                UPDATE candidates 
+                SET status = :status,
+                    interview_duration = :duration,
+                    expiry_time = :expiry
+                WHERE candidate_id = :cid AND job_id = :jid
+            """)
+            conn.execute(update_query, {
+                "status": request.new_status,
+                "duration": request.duration,
+                "expiry": expiry_time,
+                "cid": request.candidate_id,
+                "jid": request.job_id
+            })
+            conn.commit()
+
+        # 3. Email Logic - Strictly AI Interviews
+        if request.new_status != "Selected":
+            invite_link = f"http://127.0.0.1:8000/interview.html?candidate_id={request.candidate_id}&job_id={request.job_id}"
+
+            send_candidate_invite_email(
+                candidate_email=candidate_email,
+                candidate_name=candidate_name,
+                job_role=job_role,
+                interview_type=request.new_status,  # "Technical Round (AI)" or "Design Discussion (AI)"
+                interview_duration=request.duration,
+                tech_stack=tech_stack,
+                company_name=company_name,
+                branch_name=branch_name,
+                invite_link=invite_link,
+                deadline_hours=request.deadline_hours
+            )
+
+        return {"message": "Success", "new_status": request.new_status}
+
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Database error.")
