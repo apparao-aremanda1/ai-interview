@@ -305,7 +305,7 @@ class AddCandidateRequest(BaseModel):
     interview_duration: Optional[int] = 30
     tech_stack: Optional[str] = ""
     persona: Optional[str] = ""
-    passing_score: Optional[float] = None
+    passing_score: Optional[float] = 7.5
     must_questions: Optional[str] = ""
 
 
@@ -338,10 +338,11 @@ def serve_interview():
 @app.get("/api/interview-session")
 def get_interview_session(candidate_id: int, job_id: str):
     with engine.connect() as conn:
-        # Added c.expiry_time to enforce deadlines
         query = text("""
             SELECT 
-                j.job_role, j.seniority, j.interview_type, j.tech_stack, j.persona,
+                j.job_role, j.seniority, 
+                COALESCE(c.interview_type, j.interview_type) as interview_type, 
+                j.tech_stack, j.persona,
                 c.candidate_name, c.email as candidate_email, c.interview_duration, c.expiry_time,
                 b.email as hr_email
             FROM job_descriptions j
@@ -580,19 +581,22 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
 
     with engine.connect() as conn:
         job = conn.execute(
-            text("SELECT job_role, interview_type FROM job_descriptions WHERE account_id = :aid AND job_id = :jid"),
+            text(
+                "SELECT job_role, interview_type, passing_score FROM job_descriptions WHERE account_id = :aid AND job_id = :jid"),
             {"aid": account_id, "jid": job_id}
         ).mappings().fetchone()
 
         if not job:
             raise HTTPException(status_code=404, detail="Job opening not found.")
 
-        # Ensure initial rounds also receive the 48 hour default deadline tracking in DB
         expiry_time = datetime.now(timezone.utc) + timedelta(hours=48)
 
+        itype = payload.interview_type or job["interview_type"] or "Technical Deep Dive"
+        pscore = payload.passing_score or job["passing_score"] or 7.5
+
         query = text("""
-            INSERT INTO candidates (account_id, job_id, candidate_name, email, mobile, status, interview_duration, expiry_time)
-            VALUES (:aid, :jid, :name, :email, :mobile, 'invite_sent', :duration, :expiry)
+            INSERT INTO candidates (account_id, job_id, candidate_name, email, mobile, status, interview_duration, expiry_time, interview_type, passing_score)
+            VALUES (:aid, :jid, :name, :email, :mobile, 'invite_sent', :duration, :expiry, :itype, :pscore)
             RETURNING candidate_id
         """)
         cand_id = conn.execute(query, {
@@ -602,7 +606,9 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
             "email": payload.email,
             "mobile": payload.mobile,
             "duration": payload.interview_duration,
-            "expiry": expiry_time
+            "expiry": expiry_time,
+            "itype": itype,
+            "pscore": pscore
         }).scalar()
         conn.commit()
 
@@ -612,7 +618,7 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
         candidate_email=payload.email,
         candidate_name=payload.candidate_name,
         job_role=job["job_role"],
-        interview_type=payload.interview_type or job["interview_type"] or "Technical Deep Dive",
+        interview_type=itype,
         interview_duration=payload.interview_duration,
         tech_stack=payload.tech_stack or "General Technical Evaluation",
         company_name=company_name,
@@ -645,6 +651,7 @@ class AdvanceCandidateRequest(BaseModel):
     new_status: str
     duration: int = 45
     deadline_hours: int = 48
+    passing_score: float = 7.5
 
 
 @app.post("/api/candidates/advance")
@@ -653,7 +660,7 @@ async def advance_candidate(request: AdvanceCandidateRequest):
         with engine.connect() as conn:
             # 1. Verify candidate details
             query = text("""
-                SELECT c.candidate_name, c.email, j.job_role, b.company_name, b.branch_name, j.tech_stack
+                SELECT c.account_id, c.candidate_name, c.email, c.mobile, j.job_role, b.company_name, b.branch_name, j.tech_stack
                 FROM candidates c
                 JOIN job_descriptions j ON c.job_id = j.job_id AND c.account_id = j.account_id
                 JOIN branch_accounts b ON c.account_id = b.account_id
@@ -664,37 +671,44 @@ async def advance_candidate(request: AdvanceCandidateRequest):
             if not candidate:
                 raise HTTPException(status_code=404, detail="Candidate not found.")
 
-            candidate_name, candidate_email, job_role, company_name, branch_name, tech_stack = candidate[0], candidate[
-                1], candidate[2], candidate[3], candidate[4], candidate[5]
+            account_id, candidate_name, candidate_email, mobile, job_role, company_name, branch_name, tech_stack = \
+            candidate[0], candidate[1], candidate[2], candidate[3], candidate[4], candidate[5], candidate[6], candidate[
+                7]
 
-            # 2. Update candidate status
+            # 2. CREATE A NEW ROW for the new round to keep history intact
             expiry_time = datetime.now(timezone.utc) + timedelta(hours=request.deadline_hours)
+            row_status = 'Selected' if request.new_status == 'Selected' else 'invite_sent'
 
-            update_query = text("""
-                UPDATE candidates 
-                SET status = :status,
-                    interview_duration = :duration,
-                    expiry_time = :expiry
-                WHERE candidate_id = :cid AND job_id = :jid
+            insert_query = text("""
+                INSERT INTO candidates (account_id, job_id, candidate_name, email, mobile, status, interview_duration, expiry_time, interview_type, passing_score)
+                VALUES (:aid, :jid, :name, :email, :mobile, :status, :duration, :expiry, :itype, :pscore)
+                RETURNING candidate_id
             """)
-            conn.execute(update_query, {
-                "status": request.new_status,
+
+            new_cand_id = conn.execute(insert_query, {
+                "aid": account_id,
+                "jid": request.job_id,
+                "name": candidate_name,
+                "email": candidate_email,
+                "mobile": mobile,
+                "status": row_status,
                 "duration": request.duration,
                 "expiry": expiry_time,
-                "cid": request.candidate_id,
-                "jid": request.job_id
-            })
+                "itype": request.new_status,
+                "pscore": request.passing_score
+            }).scalar()
+
             conn.commit()
 
-        # 3. Email Logic - Strictly AI Interviews
+        # 3. Email Logic - Send invite linking to the newly generated candidate_id
         if request.new_status != "Selected":
-            invite_link = f"http://127.0.0.1:8000/interview.html?candidate_id={request.candidate_id}&job_id={request.job_id}"
+            invite_link = f"http://127.0.0.1:8000/interview.html?candidate_id={new_cand_id}&job_id={request.job_id}"
 
             send_candidate_invite_email(
                 candidate_email=candidate_email,
                 candidate_name=candidate_name,
                 job_role=job_role,
-                interview_type=request.new_status,  # "Technical Round (AI)" or "Design Discussion (AI)"
+                interview_type=request.new_status,
                 interview_duration=request.duration,
                 tech_stack=tech_stack,
                 company_name=company_name,

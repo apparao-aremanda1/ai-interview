@@ -204,7 +204,6 @@
                         <tr class="border-b border-slate-800 text-slate-400 uppercase tracking-wider sticky top-0 bg-slate-900 z-10">
                             <th class="py-2.5 px-3">Name</th>
                             <th class="py-2.5 px-3">Email</th>
-                            <th class="py-2.5 px-3">Mobile</th>
                             <th class="py-2.5 px-3">Interview Type</th>
                             <th class="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:text-white select-none transition" onclick="sortCandidatesByStatus()">Status <span id="candSortIcon" class="text-[10px] ml-1">↕</span></th>
                             <th class="py-2.5 px-3 text-right">Report</th>
@@ -212,7 +211,7 @@
                         </tr>
                     </thead>
                     <tbody id="candidatesTableBody" class="divide-y divide-slate-800/50 text-slate-300">
-                        <tr><td colspan="7" class="py-4 text-center text-slate-500">Select a job to view candidates.</td></tr>
+                        <tr><td colspan="6" class="py-4 text-center text-slate-500">Select a job to view candidates.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -288,18 +287,22 @@
                         <option value="Selected">Selected (Hire)</option>
                     </select>
                 </div>
-                <div id="nextRoundDetails" class="grid grid-cols-2 gap-4">
+                <div id="nextRoundDetails" class="grid grid-cols-3 gap-4">
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Duration (Mins)</label>
                         <input type="number" id="nextRoundDuration" value="45" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Deadline (Hours)</label>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Deadline (Hrs)</label>
                         <select id="nextRoundDeadline" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
                             <option value="24">24 Hours</option>
                             <option value="48" selected>48 Hours</option>
                             <option value="72">72 Hours</option>
                         </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Passing Score</label>
+                        <input type="number" step="0.1" id="nextRoundPassingScore" value="7.5" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
                     </div>
                 </div>
             </div>
@@ -655,14 +658,11 @@
                 });
                 currentCandidatesList = await res.json();
 
-                currentCandidatesList.sort((a, b) => {
-                    if (a.status === 'invite_sent' && b.status !== 'invite_sent') return -1;
-                    if (a.status !== 'invite_sent' && b.status === 'invite_sent') return 1;
-                    return 0;
-                });
+                // Sort by creation date descending so newest rounds appear at the top
+                currentCandidatesList.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-                candSortAsc = true;
-                document.getElementById("candSortIcon").innerText = "↕";
+                candSortAsc = false;
+                document.getElementById("candSortIcon").innerText = "↓";
 
                 renderCandidatesTable();
             } catch (err) {
@@ -688,12 +688,12 @@
             const tbody = document.getElementById("candidatesTableBody");
 
             if (currentCandidatesList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-500">No candidates registered for this role yet.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">No candidates registered for this role yet.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = currentCandidatesList.map(c => {
-                const interviewType = activeJobData ? activeJobData.interview_type : 'N/A';
+                const interviewType = c.interview_type || (activeJobData ? activeJobData.interview_type : 'N/A');
                 let reportButton = `<span class="text-slate-500 text-[10px]">-</span>`;
                 let actionLink = `<span class="text-slate-500 text-[10px]">-</span>`;
                 let statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800">${c.status}</span>`;
@@ -702,24 +702,25 @@
                     statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-900/80 text-emerald-300 border border-emerald-800">Pass</span>`;
                     reportButton = `
                         <button onclick="openReportModalById('${c.candidate_id}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs transition border border-blue-500">
-                            📄 View Report
+                            📄 View
                         </button>
                     `;
-                    actionLink = `<button onclick="openNextRoundModal('${c.candidate_id}')" class="text-indigo-400 hover:text-indigo-300 font-semibold text-xs underline">Next Step →</button>`;
+                    actionLink = `<button onclick="openNextRoundModal('${c.candidate_id}')" class="text-indigo-400 hover:text-indigo-300 font-semibold text-xs underline">Schedule Next →</button>`;
                 } else if (c.status === "Fail") {
                     statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-900/80 text-red-300 border border-red-800">Fail</span>`;
                     reportButton = `
                         <button onclick="openReportModalById('${c.candidate_id}')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-xs transition border border-slate-600">
-                            📄 View Report
+                            📄 View
                         </button>
                     `;
+                } else if (c.status === "Selected") {
+                    statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-900/80 text-purple-300 border border-purple-800">Selected</span>`;
                 }
 
                 return `
                 <tr class="hover:bg-slate-800/30">
                     <td class="py-2.5 px-3 font-semibold text-white whitespace-nowrap">${c.candidate_name || 'N/A'}</td>
                     <td class="py-2.5 px-3 text-slate-400 whitespace-nowrap">${c.email || 'N/A'}</td>
-                    <td class="py-2.5 px-3 text-slate-400 whitespace-nowrap">${c.mobile || 'N/A'}</td>
                     <td class="py-2.5 px-3 text-slate-400 whitespace-nowrap">${interviewType}</td>
                     <td class="py-2.5 px-3 whitespace-nowrap">${statusBadge}</td>
                     <td class="py-2.5 px-3 text-right whitespace-nowrap">${reportButton}</td>
@@ -786,6 +787,7 @@
             const type = document.getElementById('nextRoundType').value;
             const duration = document.getElementById('nextRoundDuration').value;
             const deadline = document.getElementById('nextRoundDeadline').value;
+            const passingScore = document.getElementById('nextRoundPassingScore').value;
             const btn = document.getElementById('submitNextBtn');
 
             btn.disabled = true;
@@ -800,7 +802,8 @@
                         job_id: activeJobId,
                         new_status: type,
                         duration: parseInt(duration) || 0,
-                        deadline_hours: parseInt(deadline) || 48
+                        deadline_hours: parseInt(deadline) || 48,
+                        passing_score: parseFloat(passingScore) || 7.5
                     })
                 });
 
