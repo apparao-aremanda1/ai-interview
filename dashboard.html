@@ -123,7 +123,7 @@
                 <div id="parseResumeAlert" class="hidden p-2.5 rounded-lg text-xs font-medium"></div>
             </div>
 
-            <!-- Step 2: Review & Send Form (Initially Hidden) -->
+            <!-- Step 2: Review & Send Form -->
             <div id="reviewFormSection" class="hidden bg-slate-950 p-5 rounded-xl border border-indigo-500/40 space-y-4">
                 <h4 class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">2. Review Details & Send Invitation Email</h4>
 
@@ -201,17 +201,72 @@
             <div class="overflow-x-auto max-h-48 overflow-y-auto">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
-                        <tr class="border-b border-slate-800 text-slate-400 uppercase tracking-wider sticky top-0 bg-slate-900">
+                        <tr class="border-b border-slate-800 text-slate-400 uppercase tracking-wider sticky top-0 bg-slate-900 z-10">
                             <th class="py-2.5 px-3">Name</th>
                             <th class="py-2.5 px-3">Email</th>
                             <th class="py-2.5 px-3">Mobile</th>
                             <th class="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:text-white select-none transition" onclick="sortCandidatesByStatus()">Status <span id="candSortIcon" class="text-[10px] ml-1">↕</span></th>
+                            <th class="py-2.5 px-3 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="candidatesTableBody" class="divide-y divide-slate-800/50 text-slate-300">
-                        <tr><td colspan="4" class="py-4 text-center text-slate-500">Select a job to view candidates.</td></tr>
+                        <tr><td colspan="5" class="py-4 text-center text-slate-500">Select a job to view candidates.</td></tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Scorecard & Report Modal (New Feature) -->
+    <div id="reportModal" class="hidden fixed inset-0 z-[60] items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-[#0f172a] border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-[#1e293b]">
+                <h3 class="text-lg font-bold text-white">AI Interview Report</h3>
+                <button onclick="closeReportModal()" class="text-slate-400 hover:text-white transition text-sm font-semibold">✕ Close</button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="p-6 overflow-y-auto space-y-6 flex-grow">
+                <!-- Score & Status Banner -->
+                <div class="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700">
+                    <div>
+                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Technical Score</p>
+                        <p class="text-3xl font-bold text-cyan-400" id="modalScore">--/10</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Recommendation</p>
+                        <span id="modalRecommendation" class="px-3 py-1 text-sm font-bold rounded-full bg-slate-700 text-white border border-slate-600">--</span>
+                    </div>
+                </div>
+
+                <!-- Strengths -->
+                <div>
+                    <h4 class="text-sm font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <span>✅</span> Technical Strengths
+                    </h4>
+                    <p id="modalStrengths" class="text-sm text-slate-300 leading-relaxed bg-slate-900/50 p-4 rounded-lg border border-slate-800 whitespace-pre-line">
+                        Loading...
+                    </p>
+                </div>
+
+                <!-- Weaknesses -->
+                <div>
+                    <h4 class="text-sm font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <span>⚠️</span> Areas for Improvement
+                    </h4>
+                    <p id="modalWeaknesses" class="text-sm text-slate-300 leading-relaxed bg-slate-900/50 p-4 rounded-lg border border-slate-800 whitespace-pre-line">
+                        Loading...
+                    </p>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-6 py-4 border-t border-slate-700 bg-[#1e293b] flex justify-end items-center gap-3">
+                <button onclick="closeReportModal()" class="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-600 transition">
+                    Close
+                </button>
+                <div id="modalActionContainer"></div>
             </div>
         </div>
     </div>
@@ -247,7 +302,7 @@
         }
 
         // ==========================
-        // JOBS MANAGEMENT & SORTING
+        // JOBS MANAGEMENT
         // ==========================
         async function loadJobs() {
             try {
@@ -268,7 +323,6 @@
                 document.getElementById("jobSortIcon").innerText = "↕";
 
                 renderJobsTable();
-
             } catch (err) {
                 console.error(err);
             }
@@ -380,7 +434,6 @@
 
                 fileInput.value = "";
                 loadJobs();
-
             } catch (err) {
                 alertBox.innerText = err.message;
                 alertBox.className = "mt-4 p-3 rounded-lg text-sm font-medium bg-red-900/40 text-red-300 border border-red-800";
@@ -430,7 +483,6 @@
             document.getElementById("inviteAlert").classList.add("hidden");
         }
 
-        // Update Duration based on Interview Type selection
         function updateDuration() {
             const type = document.getElementById("formInterviewType").value;
             document.getElementById("formInterviewDuration").value = (type === "Initial Screening") ? 15 : 30;
@@ -478,7 +530,7 @@
                     interviewSelect.value = "Technical Deep Dive";
                 }
 
-                updateDuration(); // Set the 15/30 duration based on type
+                updateDuration();
 
                 document.getElementById("formTechStack").value = activeJobData.tech_stack || "";
                 document.getElementById("formPassingScore").value = activeJobData.passing_score || "";
@@ -508,8 +560,8 @@
         async function sendInvitationEmail() {
             const sendBtn = document.getElementById("sendInviteBtn");
             const alertBox = document.getElementById("inviteAlert");
-
             const passingScoreVal = document.getElementById("formPassingScore").value;
+
             const payload = {
                 candidate_name: document.getElementById("formCandidateName").value,
                 email: document.getElementById("formCandidateEmail").value,
@@ -562,7 +614,6 @@
                 const res = await fetch(`${API_BASE}/api/jobs/${jobId}/candidates`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
-
                 currentCandidatesList = await res.json();
 
                 currentCandidatesList.sort((a, b) => {
@@ -575,7 +626,6 @@
                 document.getElementById("candSortIcon").innerText = "↕";
 
                 renderCandidatesTable();
-
             } catch (err) {
                 console.error(err);
             }
@@ -599,21 +649,110 @@
             const tbody = document.getElementById("candidatesTableBody");
 
             if (currentCandidatesList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-500">No candidates registered for this role yet.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-500">No candidates registered for this role yet.</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = currentCandidatesList.map(c => `
+            tbody.innerHTML = currentCandidatesList.map(c => {
+                let actionButton = `<span class="text-slate-500 text-[10px]">-</span>`;
+                let statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800">${c.status}</span>`;
+
+                if (c.status === "Pass") {
+                    statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-900/80 text-emerald-300 border border-emerald-800">Pass</span>`;
+                    actionButton = `
+                        <button onclick="openReportModalById('${c.candidate_id}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs transition border border-blue-500">
+                            📄 View Report
+                        </button>
+                    `;
+                } else if (c.status === "Fail") {
+                    statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-900/80 text-red-300 border border-red-800">Fail</span>`;
+                    actionButton = `
+                        <button onclick="openReportModalById('${c.candidate_id}')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-xs transition border border-slate-600">
+                            📄 View Report
+                        </button>
+                    `;
+                }
+
+                return `
                 <tr class="hover:bg-slate-800/30">
                     <td class="py-2.5 px-3 font-semibold text-white">${c.candidate_name || 'N/A'}</td>
                     <td class="py-2.5 px-3 text-slate-400">${c.email || 'N/A'}</td>
                     <td class="py-2.5 px-3 text-slate-400">${c.mobile || 'N/A'}</td>
-                    <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800">${c.status}</span></td>
+                    <td class="py-2.5 px-3">${statusBadge}</td>
+                    <td class="py-2.5 px-3 text-right">${actionButton}</td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
         }
 
-        loadJobs();
+        // ==========================
+        // AI SCORECARD & REPORT MODAL
+        // ==========================
+        function openReportModalById(candidateId) {
+            const candidate = currentCandidatesList.find(c => String(c.candidate_id) === String(candidateId));
+            if (!candidate) return;
+
+            document.getElementById('modalScore').innerText = candidate.feedback ? candidate.feedback.split(' ')[1] : 'N/A'; // Expecting format like "Score: 6.5/10"
+            document.getElementById('modalStrengths').innerText = candidate.technical_strengths || 'No strengths recorded.';
+            document.getElementById('modalWeaknesses').innerText = candidate.areas_for_improvement || 'No areas for improvement recorded.';
+
+            const recBadge = document.getElementById('modalRecommendation');
+            if (candidate.status === 'Pass') {
+                recBadge.innerText = 'Hire';
+                recBadge.className = 'px-3 py-1 text-sm font-bold rounded-full bg-emerald-900/80 text-emerald-300 border border-emerald-700';
+            } else {
+                recBadge.innerText = 'No Hire';
+                recBadge.className = 'px-3 py-1 text-sm font-bold rounded-full bg-red-900/80 text-red-300 border border-red-700';
+            }
+
+            const actionContainer = document.getElementById('modalActionContainer');
+            if (candidate.status === 'Pass') {
+                actionContainer.innerHTML = `
+                    <button onclick="moveToNextRound('${candidate.candidate_id}', '${activeJobId}')"
+                            class="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-lg shadow-blue-500/20 transition border border-blue-500">
+                        Move to Next Round →
+                    </button>
+                `;
+            } else {
+                actionContainer.innerHTML = '';
+            }
+
+            document.getElementById('reportModal').classList.remove('hidden');
+            document.getElementById('reportModal').classList.add('flex');
+        }
+
+        function closeReportModal() {
+            document.getElementById('reportModal').classList.add('hidden');
+            document.getElementById('reportModal').classList.remove('flex');
+        }
+
+        async function moveToNextRound(candidateId, jobId) {
+            if(!confirm("Advance this candidate to the Human Technical Round? An email invite will be sent.")) return;
+
+            try {
+                // Ensure your ATS FastAPI backend has this route implemented to update the status in PostgreSQL
+                const response = await fetch(`${API_BASE}/api/candidates/advance`, {
+                    method: 'POST',
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ candidate_id: candidateId, job_id: jobId, new_status: 'Round 2 Scheduled' })
+                });
+
+                if (response.ok) {
+                    alert("Candidate successfully advanced!");
+                    closeReportModal();
+                    loadCandidates(jobId);
+                } else {
+                    const errorData = await response.json();
+                    alert("Failed to advance candidate: " + (errorData.detail || "Unknown error"));
+                }
+            } catch (error) {
+                console.error("Error advancing candidate:", error);
+                alert("Error advancing candidate. Check the console.");
+            }
+        }
     </script>
 </body>
 </html>
