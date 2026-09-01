@@ -149,7 +149,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-3 gap-4">
+                <div class="grid grid-cols-4 gap-4">
                     <div class="col-span-1">
                         <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Interview Type</label>
                         <select id="formInterviewType" onchange="updateDuration()" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
@@ -165,22 +165,23 @@
                         <input type="number" id="formInterviewDuration" value="30" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
                     </div>
                     <div class="col-span-1">
-                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Passing Score</label>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">PASS Score</label>
                         <input type="number" step="0.1" id="formPassingScore" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Deadline (Hrs)</label>
+                        <select id="formDeadline" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                            <option value="24">24 Hours</option>
+                            <option value="48" selected>48 Hours</option>
+                            <option value="72">72 Hours</option>
+                            <option value="96">96 Hours</option>
+                        </select>
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Focus Areas / Tech Stack (Editable)</label>
                     <input type="text" id="formTechStack" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
-                </div>
-
-                <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Interviewer Voice / Persona</label>
-                    <select id="formPersona" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-                        <option value="Friendly Indian Female">Friendly Indian Female</option>
-                        <option value="Friendly Indian Male">Friendly Indian Male</option>
-                    </select>
                 </div>
 
                 <div>
@@ -198,22 +199,28 @@
             </div>
 
             <!-- Candidates List Table -->
-            <div class="overflow-x-auto max-h-48 overflow-y-auto">
-                <table class="w-full text-left border-collapse text-xs">
-                    <thead>
-                        <tr class="border-b border-slate-800 text-slate-400 uppercase tracking-wider sticky top-0 bg-slate-900 z-10">
-                            <th class="py-2.5 px-3">Name</th>
-                            <th class="py-2.5 px-3">Email</th>
-                            <th class="py-2.5 px-3">Interview Type</th>
-                            <th class="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:text-white select-none transition" onclick="sortCandidatesByStatus()">Status <span id="candSortIcon" class="text-[10px] ml-1">↕</span></th>
-                            <th class="py-2.5 px-3 text-right">Report</th>
-                            <th class="py-2.5 px-3 text-right">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="candidatesTableBody" class="divide-y divide-slate-800/50 text-slate-300">
-                        <tr><td colspan="6" class="py-4 text-center text-slate-500">Select a job to view candidates.</td></tr>
-                    </tbody>
-                </table>
+            <div class="mt-4 border-t border-slate-800 pt-4">
+                <div class="flex justify-between items-end mb-3 px-1">
+                    <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Candidate Pipeline</h4>
+                    <input type="text" id="candSearch" onkeyup="renderCandidatesTable()" placeholder="Filter by name..." class="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 w-48 shadow-inner">
+                </div>
+                <div class="overflow-x-auto max-h-56 overflow-y-auto border border-slate-800 rounded-lg">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400 uppercase tracking-wider sticky top-0 bg-slate-900 z-10">
+                                <th class="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:text-white select-none transition" onclick="sortCandidatesByName()">Name <span id="candNameSortIcon" class="text-[10px] ml-1">↕</span></th>
+                                <th class="py-2.5 px-3">Email</th>
+                                <th class="py-2.5 px-3">Interview Type</th>
+                                <th class="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:text-white select-none transition" onclick="sortCandidatesByStatus()">Status <span id="candSortIcon" class="text-[10px] ml-1">↕</span></th>
+                                <th class="py-2.5 px-3 text-right">Report</th>
+                                <th class="py-2.5 px-3 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="candidatesTableBody" class="divide-y divide-slate-800/50 text-slate-300">
+                            <tr><td colspan="6" class="py-4 text-center text-slate-500">Select a job to view candidates.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -578,14 +585,6 @@
                 document.getElementById("formPassingScore").value = activeJobData.passing_score || "";
                 document.getElementById("formMustQuestions").value = activeJobData.must_questions || "";
 
-                const personaSelect = document.getElementById("formPersona");
-                let matchedPersona = Array.from(personaSelect.options).some(opt => opt.value === activeJobData.persona);
-                if (matchedPersona) {
-                    personaSelect.value = activeJobData.persona;
-                } else {
-                    personaSelect.selectedIndex = 0;
-                }
-
                 document.getElementById("uploadSection").classList.add("hidden");
                 document.getElementById("reviewFormSection").classList.remove("hidden");
 
@@ -611,7 +610,7 @@
                 interview_type: document.getElementById("formInterviewType").value,
                 interview_duration: parseInt(document.getElementById("formInterviewDuration").value) || 30,
                 tech_stack: document.getElementById("formTechStack").value,
-                persona: document.getElementById("formPersona").value,
+                deadline_hours: parseInt(document.getElementById("formDeadline").value) || 48,
                 passing_score: passingScoreVal ? parseFloat(passingScoreVal) : null,
                 must_questions: document.getElementById("formMustQuestions").value
             };
@@ -670,16 +669,30 @@
             }
         }
 
+        let candNameSortAsc = true;
+
+        function sortCandidatesByName() {
+            candNameSortAsc = !candNameSortAsc;
+            document.getElementById("candNameSortIcon").innerText = candNameSortAsc ? "↑" : "↓";
+            document.getElementById("candSortIcon").innerText = "↕"; // Reset status icon
+
+            currentCandidatesList.sort((a, b) => {
+                const nameA = (a.candidate_name || '').toLowerCase();
+                const nameB = (b.candidate_name || '').toLowerCase();
+                if (candNameSortAsc) return nameA.localeCompare(nameB);
+                return nameB.localeCompare(nameA);
+            });
+            renderCandidatesTable();
+        }
+
         function sortCandidatesByStatus() {
             candSortAsc = !candSortAsc;
             document.getElementById("candSortIcon").innerText = candSortAsc ? "↑" : "↓";
+            document.getElementById("candNameSortIcon").innerText = "↕"; // Reset name icon
 
             currentCandidatesList.sort((a, b) => {
-                if (candSortAsc) {
-                    return a.status.localeCompare(b.status);
-                } else {
-                    return b.status.localeCompare(a.status);
-                }
+                if (candSortAsc) return a.status.localeCompare(b.status);
+                return b.status.localeCompare(a.status);
             });
             renderCandidatesTable();
         }
@@ -687,25 +700,64 @@
         function renderCandidatesTable() {
             const tbody = document.getElementById("candidatesTableBody");
 
-            if (currentCandidatesList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">No candidates registered for this role yet.</td></tr>`;
+            // 1. Handle the Name Search Filter
+            const searchInput = document.getElementById("candSearch");
+            const searchVal = searchInput ? searchInput.value.toLowerCase() : "";
+
+            let filteredList = currentCandidatesList;
+            if (searchVal) {
+                filteredList = filteredList.filter(c => (c.candidate_name || '').toLowerCase().includes(searchVal));
+            }
+
+            if (filteredList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">No candidates match your search.</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = currentCandidatesList.map(c => {
+            // 2. Identify the LATEST round for each candidate so we only show "Schedule Next" once per person
+            const latestCandIds = new Set();
+            const emailGroups = {};
+
+            currentCandidatesList.forEach(c => {
+                const rowDate = new Date(c.created_at || 0);
+                if (!emailGroups[c.email]) {
+                    emailGroups[c.email] = c;
+                } else {
+                    const existingDate = new Date(emailGroups[c.email].created_at || 0);
+                    if (rowDate > existingDate) {
+                        emailGroups[c.email] = c; // Update with the newer row
+                    }
+                }
+            });
+
+            // Store the ID of the most recent row for each unique email
+            Object.values(emailGroups).forEach(c => latestCandIds.add(c.candidate_id));
+
+            // 3. Render the Table Rows
+            tbody.innerHTML = filteredList.map(c => {
                 const interviewType = c.interview_type || (activeJobData ? activeJobData.interview_type : 'N/A');
                 let reportButton = `<span class="text-slate-500 text-[10px]">-</span>`;
                 let actionLink = `<span class="text-slate-500 text-[10px]">-</span>`;
                 let statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800">${c.status}</span>`;
 
+                // Check if this specific row is the most recent pipeline stage for this candidate
+                const isLatestRound = latestCandIds.has(c.candidate_id);
+
                 if (c.status === "Pass") {
                     statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-900/80 text-emerald-300 border border-emerald-800">Pass</span>`;
                     reportButton = `
-                        <button onclick="openReportModalById('${c.candidate_id}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs transition border border-blue-500">
+                        <button onclick="openReportModalById('${c.candidate_id}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs transition border border-blue-500 shadow shadow-blue-900">
                             📄 View
                         </button>
                     `;
-                    actionLink = `<button onclick="openNextRoundModal('${c.candidate_id}')" class="text-indigo-400 hover:text-indigo-300 font-semibold text-xs underline">Schedule Next →</button>`;
+
+                    // ONLY allow scheduling if this is their latest active round
+                    if (isLatestRound) {
+                        actionLink = `<button onclick="openNextRoundModal('${c.candidate_id}')" class="text-indigo-400 hover:text-indigo-300 font-semibold text-xs underline">Schedule Next →</button>`;
+                    } else {
+                        actionLink = `<span class="text-slate-500 text-[10px] italic">Advanced</span>`;
+                    }
+
                 } else if (c.status === "Fail") {
                     statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-900/80 text-red-300 border border-red-800">Fail</span>`;
                     reportButton = `
@@ -714,17 +766,17 @@
                         </button>
                     `;
                 } else if (c.status === "Selected") {
-                    statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-900/80 text-purple-300 border border-purple-800">Selected</span>`;
+                    statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-900/80 text-purple-300 border border-purple-800">Selected 🎉</span>`;
                 }
 
                 return `
                 <tr class="hover:bg-slate-800/30">
-                    <td class="py-2.5 px-3 font-semibold text-white whitespace-nowrap">${c.candidate_name || 'N/A'}</td>
-                    <td class="py-2.5 px-3 text-slate-400 whitespace-nowrap">${c.email || 'N/A'}</td>
-                    <td class="py-2.5 px-3 text-slate-400 whitespace-nowrap">${interviewType}</td>
-                    <td class="py-2.5 px-3 whitespace-nowrap">${statusBadge}</td>
-                    <td class="py-2.5 px-3 text-right whitespace-nowrap">${reportButton}</td>
-                    <td class="py-2.5 px-3 text-right whitespace-nowrap">${actionLink}</td>
+                    <td class="py-3 px-3 font-semibold text-white whitespace-nowrap">${c.candidate_name || 'N/A'}</td>
+                    <td class="py-3 px-3 text-slate-400 whitespace-nowrap">${c.email || 'N/A'}</td>
+                    <td class="py-3 px-3 text-slate-400 whitespace-nowrap">${interviewType}</td>
+                    <td class="py-3 px-3 whitespace-nowrap">${statusBadge}</td>
+                    <td class="py-3 px-3 text-right whitespace-nowrap">${reportButton}</td>
+                    <td class="py-3 px-3 text-right whitespace-nowrap">${actionLink}</td>
                 </tr>
                 `;
             }).join('');

@@ -304,10 +304,9 @@ class AddCandidateRequest(BaseModel):
     interview_type: Optional[str] = ""
     interview_duration: Optional[int] = 30
     tech_stack: Optional[str] = ""
-    persona: Optional[str] = ""
+    deadline_hours: Optional[int] = 48
     passing_score: Optional[float] = 7.5
     must_questions: Optional[str] = ""
-
 
 # ==========================================
 # Frontend Page Routing Endpoints
@@ -589,7 +588,8 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
         if not job:
             raise HTTPException(status_code=404, detail="Job opening not found.")
 
-        expiry_time = datetime.now(timezone.utc) + timedelta(hours=48)
+        # Dynamically calculate the deadline based on HR's selection
+        expiry_time = datetime.now(timezone.utc) + timedelta(hours=payload.deadline_hours)
 
         itype = payload.interview_type or job["interview_type"] or "Technical Deep Dive"
         pscore = payload.passing_score or job["passing_score"] or 7.5
@@ -623,9 +623,9 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
         tech_stack=payload.tech_stack or "General Technical Evaluation",
         company_name=company_name,
         branch_name=branch_name,
-        invite_link=invite_link
+        invite_link=invite_link,
+        deadline_hours=payload.deadline_hours  # Pass the dynamic deadline to the email generator
     )
-
     return {"candidate_id": cand_id, "message": "Candidate added and invitation email sent successfully!"}
 
 
