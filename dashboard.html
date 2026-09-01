@@ -102,7 +102,7 @@
 
     <!-- Candidate Management Modal -->
     <div id="candidateModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between border-b border-slate-800 pb-4">
                 <div>
                     <h3 class="text-lg font-bold text-white" id="modalJobTitle">Candidates</h3>
@@ -372,7 +372,7 @@
                                 : `<span class="text-slate-500">${j.total_candidates} registered</span>`
                             }
                         </td>
-                        <td class="py-4 px-4 text-right space-x-2">
+                        <td class="py-4 px-4 text-right space-x-2 whitespace-nowrap">
                             ${isOpen ? `
                             <button onclick="openCandidatesModal('${j.job_id}', '${j.job_role}')" class="px-3 py-1.5 rounded-lg bg-indigo-600/30 border border-indigo-500/40 hover:bg-indigo-600/50 text-xs font-medium text-indigo-200 transition">
                                 Manage Candidates
@@ -673,13 +673,14 @@
                     `;
                 }
 
+                // Added whitespace-nowrap to guarantee one-line presentation
                 return `
                 <tr class="hover:bg-slate-800/30">
-                    <td class="py-2.5 px-3 font-semibold text-white">${c.candidate_name || 'N/A'}</td>
-                    <td class="py-2.5 px-3 text-slate-400">${c.email || 'N/A'}</td>
-                    <td class="py-2.5 px-3 text-slate-400">${c.mobile || 'N/A'}</td>
-                    <td class="py-2.5 px-3">${statusBadge}</td>
-                    <td class="py-2.5 px-3 text-right">${actionButton}</td>
+                    <td class="py-2.5 px-3 font-semibold text-white whitespace-nowrap">${c.candidate_name || 'N/A'}</td>
+                    <td class="py-2.5 px-3 text-slate-400 whitespace-nowrap">${c.email || 'N/A'}</td>
+                    <td class="py-2.5 px-3 text-slate-400 whitespace-nowrap">${c.mobile || 'N/A'}</td>
+                    <td class="py-2.5 px-3 whitespace-nowrap">${statusBadge}</td>
+                    <td class="py-2.5 px-3 text-right whitespace-nowrap">${actionButton}</td>
                 </tr>
                 `;
             }).join('');
@@ -753,6 +754,13 @@
                 alert("Error advancing candidate. Check the console.");
             }
         }
+
+        // Initialize Dashboard on Page Load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (token) {
+                loadJobs();
+            }
+        });
     </script>
 </body>
 </html>
