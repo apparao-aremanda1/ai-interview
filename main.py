@@ -545,7 +545,7 @@ def list_jobs(current_account: dict = Depends(get_current_account)):
     account_id = current_account["account_id"]
     with engine.connect() as conn:
         query = text("""
-            SELECT j.*, COUNT(c.candidate_id) as total_candidates
+            SELECT j.*, COUNT(DISTINCT c.email) AS total_candidates
             FROM job_descriptions j
             LEFT JOIN candidates c ON j.account_id = c.account_id AND j.job_id = c.job_id
             WHERE j.account_id = :aid
