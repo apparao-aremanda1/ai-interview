@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kovi AI - Technical Interview</title>
+    <title>Badree AI - Technical Interview</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- AI Voice Activity Detection Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.7/dist/bundle.min.js"></script>
 
@@ -28,16 +26,11 @@
             100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
         }
         #volumeBar { transition: width 0.1s ease-in-out, background-color 0.1s; }
-
-        /* Smooth fade-in for the proctoring banner */
-        #proctorAlertBanner {
-            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-        }
+        #proctorAlertBanner { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
     </style>
 </head>
 <body class="text-slate-100 h-screen flex flex-col grid-bg select-none">
 
-    <!-- FLOATING PROCTORING ALERT BANNER (Candidate Warning Only) -->
     <div id="proctorAlertBanner" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] max-w-lg w-full px-4 opacity-0 pointer-events-none transform -translate-y-4">
         <div class="bg-red-950/95 border-2 border-red-500 text-red-200 p-4 rounded-xl shadow-2xl flex items-center gap-3 backdrop-blur-md">
             <span class="text-2xl animate-bounce">🚨</span>
@@ -48,7 +41,6 @@
         </div>
     </div>
 
-    <!-- Hidden canvas used for generating webcam snapshots -->
     <canvas id="proctorCanvas" class="hidden"></canvas>
 
     <header class="border-b border-slate-800/80 bg-[#0b0f19]/90 backdrop-blur-md h-14 shrink-0 z-50">
@@ -61,13 +53,11 @@
         </div>
     </header>
 
-    <!-- STEP 1: SETUP SCREEN -->
     <main id="setupContainer" class="flex-grow max-w-4xl mx-auto w-full p-4 flex items-center justify-center">
         <div class="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden w-full flex flex-col md:flex-row">
             <div class="w-full md:w-1/2 p-6 border-b md:border-b-0 md:border-r border-slate-800 bg-slate-900/50">
                 <h1 class="text-xl font-bold text-white mb-1">Interview Setup</h1>
                 <p class="text-xs text-slate-400 mb-6">Review instructions before starting your proctored session.</p>
-
                 <div class="space-y-4 text-xs">
                     <div>
                         <h3 class="font-bold text-emerald-400 uppercase mb-2">✅ What to do</h3>
@@ -112,7 +102,6 @@
                 <button id="requestBtn" onclick="requestPermissions()" class="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition shadow-md">
                     1. Grant Permissions
                 </button>
-
                 <button id="startBtn" onclick="proceedToInterview()" disabled class="hidden w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-md">
                     2. Connect to AI Interviewer
                 </button>
@@ -121,12 +110,9 @@
         </div>
     </main>
 
-    <!-- STEP 2: LIVE INTERVIEW SCREEN -->
     <main id="interviewContainer" class="hidden flex-grow max-w-6xl mx-auto w-full p-4 md:p-6 flex flex-col h-[calc(100vh-3.5rem)] pb-28">
-
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow mb-6 overflow-hidden">
             <div class="md:col-span-2 flex flex-col gap-6">
-                <!-- Status Banner -->
                 <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex items-center justify-between shadow-xl shrink-0">
                     <div class="flex items-center gap-2.5">
                         <span id="aiIndicator" class="relative flex h-3 w-3">
@@ -141,19 +127,16 @@
                     </div>
                 </div>
 
-                <!-- Active Question Box -->
                 <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col justify-start items-center text-center shadow-xl flex-grow overflow-y-auto relative min-h-[300px] max-h-[420px]">
                     <div id="volumeContainer" class="hidden absolute top-0 left-0 w-full h-1.5 bg-slate-800 rounded-t-2xl overflow-hidden">
                         <div id="volumeBar" class="h-full bg-slate-500 w-0"></div>
                     </div>
-
                     <h3 id="currentQuestionText" class="text-sm sm:text-base font-semibold text-white leading-relaxed max-w-3xl overflow-y-auto max-h-[320px] pr-2 my-auto">
                         Establishing connection with AI interviewer...
                     </h3>
                 </div>
             </div>
 
-            <!-- Proctored Feed -->
             <div class="md:col-span-1 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col shadow-xl">
                 <div class="flex items-center justify-between mb-3 shrink-0">
                     <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Proctored Feed</span>
@@ -167,7 +150,6 @@
             </div>
         </div>
 
-        <!-- Bottom Controls -->
         <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 shadow-2xl flex items-center gap-3 shrink-0 mb-16">
             <button id="overrideBtn" onclick="stopAutoRecordingAndSubmit()" disabled class="flex-grow py-4 rounded-lg bg-slate-800 text-slate-500 font-bold text-sm transition shadow flex items-center justify-center gap-2 cursor-not-allowed border border-slate-700">
                 <span id="overrideBtnText">Waiting for AI...</span>
@@ -178,7 +160,6 @@
         </div>
     </main>
 
-    <!-- STEP 3: COMPLETION SCREEN -->
     <main id="scorecardContainer" class="hidden flex-grow max-w-xl mx-auto w-full p-4 flex items-center justify-center">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-full shadow-2xl text-center space-y-4">
             <div id="completionIcon" class="w-14 h-14 rounded-full bg-emerald-900/50 flex items-center justify-center text-2xl mx-auto border border-emerald-500/30">✅</div>
@@ -230,7 +211,6 @@
             }, 6000);
         }
 
-        // --- PROCTORING 1: TAB SWITCH DETECTION ---
         document.addEventListener("visibilitychange", () => {
             if (document.hidden && !interviewEnded) {
                 if (ws && ws.readyState === WebSocket.OPEN) {
@@ -244,7 +224,6 @@
             }
         });
 
-        // --- PROCTORING 2: WEBCAM SNAPSHOT STREAMER ---
         function startWebcamProctoring() {
             const video = document.getElementById("liveWebcam");
             const canvas = document.getElementById("proctorCanvas");
@@ -267,25 +246,13 @@
         }
 
         function getInterviewDurationMinutes() {
-            if (!interviewConfig) {
-                console.error("Interview config is missing.");
-                throw new Error("Missing interview config.");
-            }
-
+            if (!interviewConfig) throw new Error("Missing interview config.");
             const raw = interviewConfig.interview_duration;
-            if (raw === undefined || raw === null || raw === "") {
-                alert("Error: No interview time limit was set in the database. Please contact HR.");
-                throw new Error("Missing duration in DB.");
-            }
-
+            if (raw === undefined || raw === null || raw === "") throw new Error("Missing duration in DB.");
             if (typeof raw === 'number') return raw;
             const match = String(raw).match(/\d+/);
-            if (match) {
-                return parseInt(match[0], 10);
-            } else {
-                alert("Error: Invalid time limit format in the database.");
-                throw new Error("Invalid duration format.");
-            }
+            if (match) return parseInt(match[0], 10);
+            throw new Error("Invalid duration format.");
         }
 
         async function fetchInterviewContext() {
@@ -317,11 +284,7 @@
             try {
                 cameraStream = await navigator.mediaDevices.getUserMedia({
                     video: true,
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    }
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
                 });
 
                 const videoElement = document.getElementById('webcamPreview');
@@ -380,12 +343,9 @@
             const maxSeconds = maxMinutes * 60;
 
             if (diff >= maxSeconds && !interviewEnded) {
-                if (isAiSpeaking) {
-                    document.getElementById('agentStatusText').innerText = "Wrapping up interview...";
-                } else {
-                    document.getElementById('agentStatusText').innerText = "Time limit reached. Concluding session...";
-                    endInterview(true);
-                }
+                const statusTxt = document.getElementById('agentStatusText');
+                statusTxt.innerText = "Interview time is up. Please click 'End Session'.";
+                document.getElementById('endBtn').classList.add("pulse-ring", "bg-red-600", "text-white");
             }
         }
 
@@ -434,7 +394,7 @@
                     job_id: jobId,
                     role: interviewConfig.job_role,
                     candidate_name: interviewConfig.candidate_name,
-                    agent_name: "Kovi AI",
+                    agent_name: "Badree AI",
                     hm_email: interviewConfig.hr_email,
                     tech_stack: interviewConfig.tech_stack,
                     seniority: interviewConfig.seniority,
@@ -454,13 +414,10 @@
                     document.getElementById('aiIndicator').classList.remove('hidden');
                 }
                 else if (data.type === "ai_response") {
-                    // Check if response is a proctoring warning
                     const isProctorAlert = data.text && (data.text.includes("PROCTORING WARNING") || data.text.includes("🚨"));
 
                     if (isProctorAlert) {
                         showCandidateWarning(data.text.replace("🚨 PROCTORING WARNING:", "").trim());
-
-                        // Play audio warning without disrupting the active question
                         if (data.audio_b64) {
                             const response = await fetch(`data:audio/wav;base64,${data.audio_b64}`);
                             const audioBlob = await response.blob();
@@ -473,9 +430,7 @@
                     statusTxt.innerText = "AI is speaking...";
                     document.getElementById('aiIndicator').classList.add('hidden');
 
-                    if (currentAudioPlayer) {
-                        currentAudioPlayer.pause();
-                    }
+                    if (currentAudioPlayer) currentAudioPlayer.pause();
 
                     if (data.audio_b64) {
                         isAiSpeaking = true;
@@ -485,15 +440,14 @@
                         if (interviewEnded) return;
 
                         currentAudioPlayer = new Audio(URL.createObjectURL(audioBlob));
-
                         currentAudioPlayer.onended = () => {
                             isAiSpeaking = false;
-
                             const diff = Math.floor((Date.now() - startTime) / 1000);
                             const maxSeconds = getInterviewDurationMinutes() * 60;
+
+                            // If time has elapsed, naturally end it if AI says goodbye, otherwise just keep prompting user to hit end
                             if (diff >= maxSeconds && !interviewEnded) {
-                                endInterview(true);
-                                return;
+                                // Do not forcefully end. The timer update will prompt the user.
                             }
 
                             if (!interviewEnded) startAutoRecording();
@@ -504,10 +458,12 @@
                 else if (data.type === "evaluation_report") {
                     interviewEnded = true;
                     if (currentAudioPlayer) currentAudioPlayer.pause();
-                    forceShowScorecard(false); // Completed successfully
+                    forceShowScorecard(false);
                 }
                 else if (data.type === "error") {
-                    statusTxt.innerText = "Error: " + data.text;
+                    statusTxt.innerText = "Notice: " + data.text;
+                    // Auto-release UI lock if stuck waiting for report
+                    if (interviewEnded) forceShowScorecard(false);
                 }
             };
 
@@ -560,7 +516,6 @@
                         stopAutoRecordingAndSubmit();
                     }
                 });
-
                 vadInstance.start();
             } catch (err) {
                 console.error("VAD start error:", err);
@@ -572,7 +527,6 @@
 
         function stopAutoRecordingAndSubmit() {
             if (!isRecording) return;
-
             if (vadInstance) {
                 vadInstance.pause();
                 vadInstance = null;
@@ -626,7 +580,6 @@
 
                 if (isRecording) stopAutoRecordingAndSubmit();
 
-                // Send end_session with configured passing score
                 ws.send(JSON.stringify({
                     type: "end_session",
                     passing_score: interviewConfig?.passing_score || 7.5
@@ -634,8 +587,6 @@
 
                 document.getElementById('overrideBtn').disabled = true;
                 document.getElementById('endBtn').disabled = true;
-
-                // Show processing indicator to avoid premature tab closing
                 forceShowScorecard(true);
             }
         }
