@@ -28,9 +28,28 @@
             100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
         }
         #volumeBar { transition: width 0.1s ease-in-out, background-color 0.1s; }
+
+        /* Smooth fade-in for the proctoring banner */
+        #proctorAlertBanner {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
     </style>
 </head>
 <body class="text-slate-100 h-screen flex flex-col grid-bg select-none">
+
+    <!-- FLOATING PROCTORING ALERT BANNER (Candidate Warning Only) -->
+    <div id="proctorAlertBanner" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] max-w-lg w-full px-4 opacity-0 pointer-events-none transform -translate-y-4">
+        <div class="bg-red-950/95 border-2 border-red-500 text-red-200 p-4 rounded-xl shadow-2xl flex items-center gap-3 backdrop-blur-md">
+            <span class="text-2xl animate-bounce">🚨</span>
+            <div class="flex-grow">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-red-400">Proctoring Warning</h4>
+                <p id="proctorAlertText" class="text-xs font-semibold mt-0.5 leading-snug">Violation detected.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden canvas used for generating webcam snapshots -->
+    <canvas id="proctorCanvas" class="hidden"></canvas>
 
     <header class="border-b border-slate-800/80 bg-[#0b0f19]/90 backdrop-blur-md h-14 shrink-0 z-50">
         <div class="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
@@ -64,7 +83,7 @@
                         <ul class="space-y-2 text-slate-300">
                             <li>• Do not switch tabs or open other apps.</li>
                             <li>• Do not use secondary devices or mobile phones.</li>
-                            <li>• Do not take too long to answer (Auto-timeout applies).</li>
+                            <li>• Do not cover or look away from the camera.</li>
                         </ul>
                     </div>
                 </div>
@@ -162,10 +181,10 @@
     <!-- STEP 3: COMPLETION SCREEN -->
     <main id="scorecardContainer" class="hidden flex-grow max-w-xl mx-auto w-full p-4 flex items-center justify-center">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-full shadow-2xl text-center space-y-4">
-            <div class="w-14 h-14 rounded-full bg-emerald-900/50 flex items-center justify-center text-2xl mx-auto border border-emerald-500/30">✅</div>
-            <h2 class="text-xl font-bold text-white">Interview Completed Successfully</h2>
-            <p class="text-slate-400 text-xs leading-relaxed">Thank you for your time and participation. Your session evaluation has been securely sent to the hiring team.</p>
-            <p class="text-[11px] text-slate-500 pt-2">You may now safely close this browser window.</p>
+            <div id="completionIcon" class="w-14 h-14 rounded-full bg-emerald-900/50 flex items-center justify-center text-2xl mx-auto border border-emerald-500/30">✅</div>
+            <h2 id="completionTitle" class="text-xl font-bold text-white">Interview Completed Successfully</h2>
+            <p id="completionSubtext" class="text-slate-400 text-xs leading-relaxed">Thank you for your time and participation. Your session evaluation has been securely sent to the hiring team.</p>
+            <p id="completionCloseNotice" class="text-[11px] text-slate-500 pt-2">You may now safely close this browser window.</p>
         </div>
     </main>
 
@@ -186,6 +205,7 @@
         let audioChunks = [];
         let startTime = null;
         let timerInterval = null;
+        let proctoringInterval = null;
 
         let vadInstance = null;
         let isRecording = false;
@@ -196,16 +216,63 @@
 
         const MAX_RECORDING_TIME = 300000;
 
-        // STRICT DB PARSER: NO MORE HARDCODED FALLBACKS
+        function showCandidateWarning(message) {
+            const banner = document.getElementById("proctorAlertBanner");
+            const textEl = document.getElementById("proctorAlertText");
+            textEl.innerText = message;
+
+            banner.classList.remove("opacity-0", "pointer-events-none", "-translate-y-4");
+            banner.classList.add("opacity-100", "translate-y-0");
+
+            setTimeout(() => {
+                banner.classList.remove("opacity-100", "translate-y-0");
+                banner.classList.add("opacity-0", "pointer-events-none", "-translate-y-4");
+            }, 6000);
+        }
+
+        // --- PROCTORING 1: TAB SWITCH DETECTION ---
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden && !interviewEnded) {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: "proctoring_alert",
+                        event: "tab_switch",
+                        voice: resolveVoice()
+                    }));
+                }
+                showCandidateWarning("You switched tabs. Leaving the interview tab is flagged as a violation.");
+            }
+        });
+
+        // --- PROCTORING 2: WEBCAM SNAPSHOT STREAMER ---
+        function startWebcamProctoring() {
+            const video = document.getElementById("liveWebcam");
+            const canvas = document.getElementById("proctorCanvas");
+
+            proctoringInterval = setInterval(() => {
+                if (ws && ws.readyState === WebSocket.OPEN && !interviewEnded && video.videoWidth > 0) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    const base64Frame = canvas.toDataURL("image/jpeg", 0.5).split(",")[1];
+                    ws.send(JSON.stringify({
+                        type: "video_frame",
+                        image_b64: base64Frame,
+                        voice: resolveVoice()
+                    }));
+                }
+            }, 5000);
+        }
+
         function getInterviewDurationMinutes() {
             if (!interviewConfig) {
                 console.error("Interview config is missing.");
                 throw new Error("Missing interview config.");
             }
 
-            // Strictly fetch the exact column from the DB
             const raw = interviewConfig.interview_duration;
-
             if (raw === undefined || raw === null || raw === "") {
                 alert("Error: No interview time limit was set in the database. Please contact HR.");
                 throw new Error("Missing duration in DB.");
@@ -300,6 +367,7 @@
             timerInterval = setInterval(updateTimer, 1000);
 
             initWebSocket();
+            startWebcamProctoring();
         }
 
         function updateTimer() {
@@ -325,12 +393,26 @@
             document.getElementById('currentQuestionText').innerText = text;
         }
 
-        function forceShowScorecard() {
+        function forceShowScorecard(isProcessing = false) {
             document.getElementById('interviewContainer').classList.add("hidden");
             document.getElementById('scorecardContainer').classList.remove("hidden");
             clearInterval(timerInterval);
+            clearInterval(proctoringInterval);
+
             if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
             if (screenStream) screenStream.getTracks().forEach(track => track.stop());
+
+            if (isProcessing) {
+                document.getElementById('completionIcon').innerText = "⏳";
+                document.getElementById('completionTitle').innerText = "Finalizing Evaluation...";
+                document.getElementById('completionSubtext').innerText = "The AI is compiling your scorecard and securely transmitting the results to HR. Please do not close this window.";
+                document.getElementById('completionCloseNotice').classList.add("hidden");
+            } else {
+                document.getElementById('completionIcon').innerText = "✅";
+                document.getElementById('completionTitle').innerText = "Interview Completed Successfully";
+                document.getElementById('completionSubtext').innerText = "Thank you for your participation. Your evaluation has been delivered to the hiring team.";
+                document.getElementById('completionCloseNotice').classList.remove("hidden");
+            }
         }
 
         function resolveVoice() {
@@ -372,6 +454,21 @@
                     document.getElementById('aiIndicator').classList.remove('hidden');
                 }
                 else if (data.type === "ai_response") {
+                    // Check if response is a proctoring warning
+                    const isProctorAlert = data.text && (data.text.includes("PROCTORING WARNING") || data.text.includes("🚨"));
+
+                    if (isProctorAlert) {
+                        showCandidateWarning(data.text.replace("🚨 PROCTORING WARNING:", "").trim());
+
+                        // Play audio warning without disrupting the active question
+                        if (data.audio_b64) {
+                            const response = await fetch(`data:audio/wav;base64,${data.audio_b64}`);
+                            const audioBlob = await response.blob();
+                            new Audio(URL.createObjectURL(audioBlob)).play();
+                        }
+                        return;
+                    }
+
                     updateActiveQuestion(data.text);
                     statusTxt.innerText = "AI is speaking...";
                     document.getElementById('aiIndicator').classList.add('hidden');
@@ -407,7 +504,7 @@
                 else if (data.type === "evaluation_report") {
                     interviewEnded = true;
                     if (currentAudioPlayer) currentAudioPlayer.pause();
-                    forceShowScorecard();
+                    forceShowScorecard(false); // Completed successfully
                 }
                 else if (data.type === "error") {
                     statusTxt.innerText = "Error: " + data.text;
@@ -528,11 +625,18 @@
                 }
 
                 if (isRecording) stopAutoRecordingAndSubmit();
-                ws.send(JSON.stringify({ type: "end_session" }));
+
+                // Send end_session with configured passing score
+                ws.send(JSON.stringify({
+                    type: "end_session",
+                    passing_score: interviewConfig?.passing_score || 7.5
+                }));
 
                 document.getElementById('overrideBtn').disabled = true;
                 document.getElementById('endBtn').disabled = true;
-                forceShowScorecard();
+
+                // Show processing indicator to avoid premature tab closing
+                forceShowScorecard(true);
             }
         }
     </script>
