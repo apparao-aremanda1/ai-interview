@@ -191,6 +191,7 @@
         let vadInstance = null;
         let isRecording = false;
         let isAiSpeaking = false;
+        let isFinalAiMessage = false;
 
         let currentAudioPlayer = null;
         let interviewEnded = false;
@@ -415,6 +416,7 @@
                 }
                 else if (data.type === "ai_response") {
                     const isProctorAlert = data.text && (data.text.includes("PROCTORING WARNING") || data.text.includes("🚨"));
+                    isFinalAiMessage = data.is_wrap_up_response === true;
 
                     if (isProctorAlert) {
                         showCandidateWarning(data.text.replace("🚨 PROCTORING WARNING:", "").trim());
@@ -442,14 +444,12 @@
                         currentAudioPlayer = new Audio(URL.createObjectURL(audioBlob));
                         currentAudioPlayer.onended = () => {
                             isAiSpeaking = false;
-                            const diff = Math.floor((Date.now() - startTime) / 1000);
-                            const maxSeconds = getInterviewDurationMinutes() * 60;
 
-                            // If time has elapsed, naturally end it if AI says goodbye, otherwise just keep prompting user to hit end
-                            if (diff >= maxSeconds && !interviewEnded) {
-                                // Do not forcefully end. The timer update will prompt the user.
+                            // Exit deterministically based on the boolean flag
+                            if (isFinalAiMessage && !interviewEnded) {
+                                endInterview(true);
+                                return;
                             }
-
                             if (!interviewEnded) startAutoRecording();
                         };
                         currentAudioPlayer.play();
