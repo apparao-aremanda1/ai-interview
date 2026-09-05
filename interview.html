@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Badree AI - Technical Interview</title>
+    <title>Kovi AI - Technical Interview</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.js"></script>
@@ -259,8 +259,14 @@
         async function fetchInterviewContext() {
             if (!candidateId || !jobId) return renderInvalidLink();
             try {
-                const res = await fetch(`${ATS_API_BASE}/api/interview-session?candidate_id=${candidateId}&job_id=${jobId}`);
-                if (!res.ok) throw new Error("Invalid session.");
+                const requestUrl = `${ATS_API_BASE}/api/interview-session?candidate_id=${candidateId}&job_id=${jobId}`;
+                // 2. Check the exact URL it is trying to call
+                const res = await fetch(requestUrl);
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    throw new Error("Invalid session.");
+                }
+
                 interviewConfig = await res.json();
                 document.getElementById('headerRole').innerText = `${interviewConfig.job_role}`;
                 document.getElementById('headerRole').classList.remove('hidden');
@@ -395,7 +401,7 @@
                     job_id: jobId,
                     role: interviewConfig.job_role,
                     candidate_name: interviewConfig.candidate_name,
-                    agent_name: "Badree AI",
+                    agent_name: "Kovi AI",
                     hm_email: interviewConfig.hr_email,
                     tech_stack: interviewConfig.tech_stack,
                     seniority: interviewConfig.seniority,
