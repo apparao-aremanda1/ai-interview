@@ -113,7 +113,7 @@ def validate_company_email(email: str):
 
 
 def send_activation_email(to_email: str, token: str):
-    activation_link = f"http://127.0.0.1:8000/api/auth/verify?token={token}"
+    activation_link = f"https://kovi-backend-398838744187.asia-south1.run.app/api/auth/verify?token={token}"
 
     smtp_host = os.getenv("SMTP_HOST")
     smtp_port = int(os.getenv("SMTP_PORT", 587))
@@ -612,7 +612,7 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
         }).scalar()
         conn.commit()
 
-    invite_link = f"http://127.0.0.1:8000/interview.html?candidate_id={cand_id}&job_id={job_id}"
+    invite_link = f"https://techeval.ai/interview.html?candidate_id={cand_id}&job_id={job_id}"
 
     send_candidate_invite_email(
         candidate_email=payload.email,
