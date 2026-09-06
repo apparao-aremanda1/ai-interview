@@ -347,7 +347,7 @@ def get_interview_session(candidate_id: int, job_id: str):
             SELECT 
                 j.job_role, j.seniority, 
                 COALESCE(c.interview_type, j.interview_type) as interview_type, 
-                j.tech_stack, j.persona,
+                j.tech_stack, j.persona, j.must_questions, 
                 c.candidate_name, c.email as candidate_email, c.interview_duration, c.expiry_time,
                 b.email as hr_email
             FROM job_descriptions j
