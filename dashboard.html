@@ -45,7 +45,7 @@
             <h2 class="text-lg font-bold text-white mb-2">Create Job Description & Launch Screening</h2>
             <p class="text-sm text-slate-400 mb-6">Upload a Job Description (PDF or Text). Claude will extract the tech stack and requirements instantly.</p>
 
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end mb-4">
                 <div class="md:col-span-5">
                     <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Select JD File</label>
                     <input type="file" id="jdFile" accept=".pdf,.txt" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-300 file:mr-4 file:py-1 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer">
@@ -66,6 +66,13 @@
                     </button>
                 </div>
             </div>
+
+            <!-- NEW FIELD: Must-Ask Questions -->
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Must-Ask Questions (Optional - Added to AI Prompt)</label>
+                <textarea id="jdMustQuestions" rows="2" placeholder="e.g., 1. Walk me through a time you optimized a slow SQL query.&#10;2. How do you handle distributed transactions?" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"></textarea>
+            </div>
+
             <div id="parseAlert" class="hidden mt-4 p-3 rounded-lg text-sm font-medium"></div>
         </div>
 
@@ -442,6 +449,9 @@
             const alertBox = document.getElementById("parseAlert");
             const selectedInterviewType = document.getElementById("jdInterviewType").value;
 
+            // Capture manual input
+            const manualQuestions = document.getElementById("jdMustQuestions").value.trim();
+
             if (fileInput.files.length === 0) {
                 alertBox.innerText = "Please select a JD file first.";
                 alertBox.className = "mt-4 p-3 rounded-lg text-sm font-medium bg-red-900/40 text-red-300 border border-red-800";
@@ -467,6 +477,10 @@
 
                 parsedData.interview_type = selectedInterviewType;
 
+                // CRITICAL FIX: Unconditionally override the AI's output.
+                // If you type something, it saves it. If you leave it blank, it saves an empty string.
+                parsedData.must_questions = manualQuestions;
+
                 const saveRes = await fetch(`${API_BASE}/api/jobs`, {
                     method: "POST",
                     headers: {
@@ -482,6 +496,7 @@
                 alertBox.classList.remove("hidden");
 
                 fileInput.value = "";
+                document.getElementById("jdMustQuestions").value = ""; // Clear the text area
                 loadJobs();
             } catch (err) {
                 alertBox.innerText = err.message;
