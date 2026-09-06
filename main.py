@@ -7,6 +7,7 @@ from email.message import EmailMessage
 from typing import Optional
 
 import PyPDF2
+import docx
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File
 from fastapi import HTTPException, Depends
@@ -83,6 +84,11 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     for page in reader.pages:
         text_content += (page.extract_text() or "") + "\n"
     return text_content
+
+# Add this new helper function for Word documents
+def extract_text_from_docx(file_bytes: bytes) -> str:
+    doc = docx.Document(io.BytesIO(file_bytes))
+    return "\n".join([paragraph.text for paragraph in doc.paragraphs])
 
 
 def get_current_account(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
@@ -472,7 +478,15 @@ def login(payload: LoginRequest):
 @app.post("/api/parse-jd", response_model=JDParsedData)
 async def parse_jd(file: UploadFile = File(...), current_account: dict = Depends(get_current_account)):
     content = await file.read()
-    text_content = extract_text_from_pdf(content) if file.filename.endswith(".pdf") else content.decode("utf-8")
+    filename = file.filename.lower()
+
+    if filename.endswith(".pdf"):
+        text_content = extract_text_from_pdf(content)
+    elif filename.endswith(".docx"):
+        text_content = extract_text_from_docx(content)
+    else:
+        # Fallback for .txt or other text-based files
+        text_content = content.decode("utf-8", errors="ignore")
 
     prompt = ChatPromptTemplate.from_messages([
         ("system",
@@ -489,7 +503,15 @@ async def parse_jd(file: UploadFile = File(...), current_account: dict = Depends
 @app.post("/api/parse-resume", response_model=ResumeParsedData)
 async def parse_resume(file: UploadFile = File(...), current_account: dict = Depends(get_current_account)):
     content = await file.read()
-    text_content = extract_text_from_pdf(content) if file.filename.endswith(".pdf") else content.decode("utf-8")
+    filename = file.filename.lower()
+
+    if filename.endswith(".pdf"):
+        text_content = extract_text_from_pdf(content)
+    elif filename.endswith(".docx"):
+        text_content = extract_text_from_docx(content)
+    else:
+        # Fallback for .txt or other text-based files
+        text_content = content.decode("utf-8", errors="ignore")
 
     prompt = ChatPromptTemplate.from_messages([
         ("system",
