@@ -39,47 +39,21 @@
 
     <!-- Main Content Hub -->
     <main class="flex-grow max-w-7xl mx-auto w-full p-6 space-y-8">
-
-        <!-- Action Banner / JD Upload Section -->
-        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
-            <h2 class="text-lg font-bold text-white mb-2">Create Job Description & Launch Screening</h2>
-            <p class="text-sm text-slate-400 mb-6">Upload a Job Description (PDF or Text). Claude will extract the tech stack and requirements instantly.</p>
-
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end mb-4">
-                <div class="md:col-span-5">
-                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Select JD File</label>
-                    <input type="file" id="jdFile" accept=".pdf,.txt" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-300 file:mr-4 file:py-1 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer">
-                </div>
-                <div class="md:col-span-4">
-                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Interview Type</label>
-                    <select id="jdInterviewType" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500">
-                        <option value="Initial Screening">Initial Screening</option>
-                        <option value="Technical Deep Dive" selected>Technical Deep Dive</option>
-                        <option value="Behavioral & Culture Fit">Behavioral & Culture Fit</option>
-                        <option value="System Design">System Design</option>
-                        <option value="Full Stack Evaluation">Full Stack Evaluation</option>
-                    </select>
-                </div>
-                <div class="md:col-span-3">
-                    <button onclick="parseAndSaveJD()" id="parseBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-4 rounded-xl transition shadow-lg shadow-indigo-600/30 text-sm">
-                        Parse & Create JD
-                    </button>
-                </div>
-            </div>
-
-            <!-- NEW FIELD: Must-Ask Questions -->
+        <!-- Action Banner (Triggers Modal) -->
+        <div class="mb-6 flex justify-between items-center bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
             <div>
-                <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Must-Ask Questions (Optional - Added to AI Prompt)</label>
-                <textarea id="jdMustQuestions" rows="2" placeholder="e.g., 1. Walk me through a time you optimized a slow SQL query.&#10;2. How do you handle distributed transactions?" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"></textarea>
+                <h2 class="text-xl font-bold text-white mb-1">Job Descriptions</h2>
+                <p class="text-sm text-slate-400">Manage your active job openings or upload a new JD to launch an AI screening.</p>
             </div>
-
-            <div id="parseAlert" class="hidden mt-4 p-3 rounded-lg text-sm font-medium"></div>
+            <button onclick="openUploadJdModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-5 rounded-xl transition shadow-lg shadow-indigo-600/30 text-sm flex items-center gap-2">
+                <span class="text-lg leading-none">+</span> Upload New JD
+            </button>
         </div>
 
         <!-- Active JDs List Section -->
         <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
             <div class="flex items-center justify-between mb-6">
-                <h3 class="text-lg font-bold text-white">Active Branch Job Openings</h3>
+                <h3 class="text-lg font-bold text-white">Active Job Openings</h3>
                 <button onclick="loadJobs()" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">Refresh List</button>
             </div>
 
@@ -106,6 +80,47 @@
         </div>
 
     </main>
+    <!-- Create JD Modal -->
+    <div id="createJdModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-[80]">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div>
+                    <h3 class="text-lg font-bold text-white">Create AI Interview Profile</h3>
+                    <p class="text-xs text-slate-400">Upload a JD. LLM will extract requirements instantly.</p>
+                </div>
+                <button onclick="closeUploadJdModal()" class="text-slate-400 hover:text-white text-sm font-semibold">✕ Close</button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">1. Select JD File (.pdf, .txt, .docx)</label>
+                    <input type="file" id="modalJdFile" accept=".pdf,.txt,.docx" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-300 file:mr-4 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">2. Evaluation Type</label>
+                    <select id="modalJdInterviewType" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                        <option value="Initial Screening">Initial Screening</option>
+                        <option value="Technical Deep Dive" selected>Technical Deep Dive</option>
+                        <option value="Behavioral & Culture Fit">Behavioral & Culture Fit</option>
+                        <option value="System Design">System Design</option>
+                        <option value="Full Stack Evaluation">Full Stack Evaluation</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">3. Must-Ask Questions <span class="text-slate-500 normal-case tracking-normal font-medium">(Optional - Added to AI Prompt)</span></label>
+                    <textarea id="modalJdMustQuestions" rows="3" placeholder="e.g., 1. Walk me through a time you optimized a slow SQL query." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition resize-y"></textarea>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
+                <button onclick="closeUploadJdModal()" class="px-4 py-2 rounded-lg border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition">Cancel</button>
+                <button onclick="parseAndSaveJD()" id="modalParseBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-6 rounded-lg transition shadow-lg shadow-indigo-600/30 text-xs flex items-center justify-center gap-2">
+                    <span>✨</span> Parse & Create JD
+                </button>
+            </div>
+            <div id="modalParseAlert" class="hidden p-3 rounded-lg text-xs font-medium text-center mt-3"></div>
+        </div>
+    </div>
 
     <!-- Candidate Management Modal -->
     <div id="candidateModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
@@ -444,17 +459,15 @@
         }
 
         async function parseAndSaveJD() {
-            const fileInput = document.getElementById("jdFile");
-            const parseBtn = document.getElementById("parseBtn");
-            const alertBox = document.getElementById("parseAlert");
-            const selectedInterviewType = document.getElementById("jdInterviewType").value;
-
-            // Capture manual input
-            const manualQuestions = document.getElementById("jdMustQuestions").value.trim();
+            const fileInput = document.getElementById("modalJdFile");
+            const parseBtn = document.getElementById("modalParseBtn");
+            const alertBox = document.getElementById("modalParseAlert");
+            const selectedInterviewType = document.getElementById("modalJdInterviewType").value;
+            const manualQuestions = document.getElementById("modalJdMustQuestions").value.trim();
 
             if (fileInput.files.length === 0) {
                 alertBox.innerText = "Please select a JD file first.";
-                alertBox.className = "mt-4 p-3 rounded-lg text-sm font-medium bg-red-900/40 text-red-300 border border-red-800";
+                alertBox.className = "mt-3 p-2 rounded-lg text-xs font-medium bg-red-900/40 text-red-300 border border-red-800 text-center";
                 alertBox.classList.remove("hidden");
                 return;
             }
@@ -463,7 +476,7 @@
             formData.append("file", fileInput.files[0]);
 
             parseBtn.disabled = true;
-            parseBtn.innerText = "Parsing with Claude...";
+            parseBtn.innerHTML = `<span>⏳</span> Parsing ...`;
             alertBox.classList.add("hidden");
 
             try {
@@ -476,10 +489,7 @@
                 if (!parseRes.ok) throw new Error(parsedData.detail || "Failed to parse JD");
 
                 parsedData.interview_type = selectedInterviewType;
-
-                // CRITICAL FIX: Unconditionally override the AI's output.
-                // If you type something, it saves it. If you leave it blank, it saves an empty string.
-                parsedData.must_questions = manualQuestions;
+                parsedData.must_questions = manualQuestions; // Unconditional override
 
                 const saveRes = await fetch(`${API_BASE}/api/jobs`, {
                     method: "POST",
@@ -492,19 +502,25 @@
                 if (!saveRes.ok) throw new Error("Failed to save job to database");
 
                 alertBox.innerText = `Success! Created Job ID: ${parsedData.job_id} (${parsedData.job_role})`;
-                alertBox.className = "mt-4 p-3 rounded-lg text-sm font-medium bg-emerald-900/40 text-emerald-300 border border-emerald-800";
+                alertBox.className = "mt-3 p-2 rounded-lg text-xs font-medium bg-emerald-900/40 text-emerald-300 border border-emerald-800 text-center";
                 alertBox.classList.remove("hidden");
 
                 fileInput.value = "";
-                document.getElementById("jdMustQuestions").value = ""; // Clear the text area
+                document.getElementById("modalJdMustQuestions").value = "";
                 loadJobs();
+
+                // Auto-close the popup after success
+                setTimeout(() => {
+                    closeUploadJdModal();
+                }, 2000);
+
             } catch (err) {
                 alertBox.innerText = err.message;
-                alertBox.className = "mt-4 p-3 rounded-lg text-sm font-medium bg-red-900/40 text-red-300 border border-red-800";
+                alertBox.className = "mt-3 p-2 rounded-lg text-xs font-medium bg-red-900/40 text-red-300 border border-red-800 text-center";
                 alertBox.classList.remove("hidden");
             } finally {
                 parseBtn.disabled = false;
-                parseBtn.innerText = "Parse & Create JD";
+                parseBtn.innerHTML = `<span>✨</span> Parse & Create JD`;
             }
         }
 
@@ -896,6 +912,19 @@
                 loadJobs();
             }
         });
+
+        function openUploadJdModal() {
+            document.getElementById("modalJdFile").value = "";
+            document.getElementById("modalJdMustQuestions").value = "";
+            document.getElementById("modalParseAlert").classList.add("hidden");
+            document.getElementById("createJdModal").classList.remove("hidden");
+            document.getElementById("createJdModal").classList.add("flex");
+        }
+
+        function closeUploadJdModal() {
+            document.getElementById("createJdModal").classList.add("hidden");
+            document.getElementById("createJdModal").classList.remove("flex");
+        }
     </script>
 </body>
 </html>
