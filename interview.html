@@ -154,9 +154,6 @@
             <button id="overrideBtn" onclick="stopAutoRecordingAndSubmit()" disabled class="flex-grow py-4 rounded-lg bg-slate-800 text-slate-500 font-bold text-sm transition shadow flex items-center justify-center gap-2 cursor-not-allowed border border-slate-700">
                 <span id="overrideBtnText">Waiting for AI...</span>
             </button>
-            <button id="endBtn" onclick="endInterview()" disabled class="px-6 py-4 rounded-lg bg-slate-800 hover:bg-red-950 hover:text-red-300 border border-slate-700 text-slate-400 font-bold text-sm transition">
-                End Session
-            </button>
         </div>
     </main>
 
@@ -329,7 +326,6 @@
         function proceedToInterview() {
             document.getElementById('setupContainer').classList.add("hidden");
             document.getElementById('interviewContainer').classList.remove("hidden");
-            document.getElementById('endBtn').disabled = false;
 
             document.getElementById('liveWebcam').srcObject = cameraStream;
 
@@ -352,7 +348,6 @@
             if (diff >= maxSeconds && !interviewEnded) {
                 const statusTxt = document.getElementById('agentStatusText');
                 statusTxt.innerText = "Interview time is up. Please click 'End Session'.";
-                document.getElementById('endBtn').classList.add("pulse-ring", "bg-red-600", "text-white");
             }
         }
 
@@ -577,25 +572,28 @@
         }
 
         function endInterview(force = false) {
-            if (force || confirm("Are you sure you want to conclude the interview and submit for evaluation?")) {
-                interviewEnded = true;
+            // Remove the confirm() prompt, since this is now fully automated
+            interviewEnded = true;
 
-                if (currentAudioPlayer) {
-                    currentAudioPlayer.pause();
-                    currentAudioPlayer.currentTime = 0;
-                }
+            if (currentAudioPlayer) {
+                currentAudioPlayer.pause();
+                currentAudioPlayer.currentTime = 0;
+            }
 
-                if (isRecording) stopAutoRecordingAndSubmit();
+            if (isRecording) stopAutoRecordingAndSubmit();
 
+            if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                     type: "end_session",
                     passing_score: interviewConfig?.passing_score || 7.5
                 }));
-
-                document.getElementById('overrideBtn').disabled = true;
-                document.getElementById('endBtn').disabled = true;
-                forceShowScorecard(true);
             }
+
+            document.getElementById('overrideBtn').disabled = true;
+
+            // Change 'true' to 'false' to instantly show the Green Checkmark
+            // instead of getting stuck on the Hourglass.
+            forceShowScorecard(false);
         }
     </script>
 </body>
