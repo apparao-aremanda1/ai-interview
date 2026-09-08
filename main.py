@@ -28,6 +28,7 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-key-change-in-prod-12345")
+FRONTEND_BASE_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:8000")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 
@@ -724,7 +725,7 @@ async def advance_candidate(request: AdvanceCandidateRequest):
 
         # 3. Email Logic - Send invite linking to the newly generated candidate_id
         if request.new_status != "Selected":
-            invite_link = f"http://127.0.0.1:8000/interview.html?candidate_id={new_cand_id}&job_id={request.job_id}"
+            invite_link = f"{FRONTEND_BASE_URL}/interview.html?candidate_id={new_cand_id}&job_id={request.job_id}"
 
             send_candidate_invite_email(
                 candidate_email=candidate_email,
