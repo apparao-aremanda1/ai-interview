@@ -8,8 +8,9 @@ from typing import Optional
 
 import PyPDF2
 import docx
+import razorpay
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request
 from fastapi import HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -29,6 +30,12 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-key-change-in-prod-12345")
 FRONTEND_BASE_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:8000")
+
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
+RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET")
+CREDIT_PRICE_INR = int(os.getenv("CREDIT_PRICE_INR", 100))
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 
@@ -62,6 +69,8 @@ llm = ChatAnthropic(
     temperature=0
 )
 
+# Initialize the Razorpay Client
+rzp_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 # --- Helper Utilities ---
 def hash_password(password: str) -> str:
@@ -314,6 +323,42 @@ class AddCandidateRequest(BaseModel):
     deadline_hours: Optional[int] = 48
     passing_score: Optional[float] = 7.5
     must_questions: Optional[str] = ""
+
+
+class PurchaseRequest(BaseModel):
+    credit_amount: int
+
+
+@app.post("/api/billing/create-order")
+def create_razorpay_order(payload: PurchaseRequest, current_account: dict = Depends(get_current_account)):
+    account_id = current_account["account_id"]
+
+    # Calculate amount in Paise (Razorpay expects the smallest currency unit)
+    amount_in_inr = payload.credit_amount * CREDIT_PRICE_INR
+    amount_in_paise = amount_in_inr * 100
+
+    order_data = {
+        "amount": amount_in_paise,
+        "currency": "INR",
+        "receipt": f"receipt_acc_{account_id}",
+        "notes": {
+            "account_id": account_id,
+            "credits_purchased": payload.credit_amount
+        }
+    }
+
+    try:
+        # Generate the order on Razorpay's servers
+        razorpay_order = rzp_client.order.create(data=order_data)
+        return {
+            "order_id": razorpay_order["id"],
+            "amount": amount_in_paise,
+            "currency": "INR",
+            "key_id": RAZORPAY_KEY_ID
+        }
+    except Exception as e:
+        logger.error(f"Razorpay Order Creation Failed: {e}")
+        raise HTTPException(status_code=500, detail="Could not initialize payment.")
 
 # ==========================================
 # Frontend Page Routing Endpoints
@@ -611,6 +656,17 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
         if not job:
             raise HTTPException(status_code=404, detail="Job opening not found.")
 
+        # --- NEW BILLING GATEKEEPER ---
+        account_details = conn.execute(
+            text("SELECT available_credits FROM branch_accounts WHERE account_id = :aid FOR UPDATE"),
+            {"aid": account_id}
+        ).fetchone()
+
+        if not account_details or account_details[0] < 1:
+            raise HTTPException(status_code=402,
+                                detail="Insufficient credits. Please top up your account to invite more candidates.")
+
+        # 1. Insert Candidate FIRST to generate the cand_id
         # Dynamically calculate the deadline based on HR's selection
         expiry_time = datetime.now(timezone.utc) + timedelta(hours=payload.deadline_hours)
 
@@ -633,6 +689,23 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
             "itype": itype,
             "pscore": pscore
         }).scalar()
+
+        # 2. Deduct 1 credit
+        conn.execute(
+            text("UPDATE branch_accounts SET available_credits = available_credits - 1 WHERE account_id = :aid"),
+            {"aid": account_id}
+        )
+
+        # 3. Log the usage in the ledger referencing the exact cand_id
+        conn.execute(
+            text("""
+                    INSERT INTO billing_transactions (account_id, transaction_type, credits_exchanged, gateway_reference)
+                    VALUES (:aid, 'interview_usage', -1, :ref)
+                """),
+            {"aid": account_id, "ref": f"cand_invite_{cand_id}"}
+        )
+
+        # Commit all changes atomically
         conn.commit()
 
     invite_link = f"https://techeval.ai/interview.html?candidate_id={cand_id}&job_id={job_id}"
@@ -667,6 +740,55 @@ def get_job_candidates(job_id: str, current_account: dict = Depends(get_current_
     return list(rows)
 
 
+@app.post("/api/billing/webhook")
+async def razorpay_webhook(request: Request):
+    # 1. Get the signature and payload
+    signature = request.headers.get("X-Razorpay-Signature")
+    body = await request.body()
+
+    try:
+        # 2. Cryptographically verify the webhook came from Razorpay
+        rzp_client.utility.verify_webhook_signature(body.decode("utf-8"), signature, RAZORPAY_WEBHOOK_SECRET)
+    except Exception as e:
+        logger.error("Invalid Razorpay Webhook Signature")
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    # 3. Parse the event
+    payload = await request.json()
+    event_type = payload.get("event")
+
+    if event_type == "payment.captured":
+        payment_entity = payload["payload"]["payment"]["entity"]
+        notes = payment_entity.get("notes", {})
+
+        account_id = notes.get("account_id")
+        credits_purchased = int(notes.get("credits_purchased", 0))
+        amount_paid = payment_entity.get("amount") / 100.0  # Convert back to INR
+        payment_id = payment_entity.get("id")
+
+        if account_id and credits_purchased > 0:
+            with engine.connect() as conn:
+                # Add credits to the account
+                conn.execute(
+                    text(
+                        "UPDATE branch_accounts SET available_credits = available_credits + :credits WHERE account_id = :aid"),
+                    {"credits": credits_purchased, "aid": account_id}
+                )
+
+                # Log the transaction in the ledger
+                conn.execute(
+                    text("""
+                        INSERT INTO billing_transactions (account_id, transaction_type, credits_exchanged, amount_paid, currency, gateway_reference)
+                        VALUES (:aid, 'purchase', :credits, :amount, 'INR', :ref)
+                    """),
+                    {"aid": account_id, "credits": credits_purchased, "amount": amount_paid, "ref": payment_id}
+                )
+                conn.commit()
+                logger.info(f"Successfully credited {credits_purchased} to account {account_id}")
+
+    return {"status": "ok"}
+
+
 # Define the expected payload from the dashboard
 class AdvanceCandidateRequest(BaseModel):
     candidate_id: str
@@ -678,27 +800,43 @@ class AdvanceCandidateRequest(BaseModel):
 
 
 @app.post("/api/candidates/advance")
-async def advance_candidate(request: AdvanceCandidateRequest):
+async def advance_candidate(
+        request: AdvanceCandidateRequest,
+        current_account: dict = Depends(get_current_account)  # <-- FIX 1: Security added
+):
+    account_id = current_account["account_id"]
+
     try:
         with engine.connect() as conn:
-            # 1. Verify candidate details
+            # Verify candidate details
             query = text("""
-                SELECT c.account_id, c.candidate_name, c.email, c.mobile, j.job_role, b.company_name, b.branch_name, j.tech_stack
+                SELECT c.candidate_name, c.email, c.mobile, j.job_role, b.company_name, b.branch_name, j.tech_stack
                 FROM candidates c
                 JOIN job_descriptions j ON c.job_id = j.job_id AND c.account_id = j.account_id
                 JOIN branch_accounts b ON c.account_id = b.account_id
-                WHERE c.candidate_id = :cid AND c.job_id = :jid
+                WHERE c.candidate_id = :cid AND c.job_id = :jid AND c.account_id = :aid
             """)
-            candidate = conn.execute(query, {"cid": request.candidate_id, "jid": request.job_id}).fetchone()
+            candidate = conn.execute(query,
+                                     {"cid": request.candidate_id, "jid": request.job_id, "aid": account_id}).fetchone()
 
             if not candidate:
-                raise HTTPException(status_code=404, detail="Candidate not found.")
+                raise HTTPException(status_code=404, detail="Candidate not found or unauthorized.")
 
-            account_id, candidate_name, candidate_email, mobile, job_role, company_name, branch_name, tech_stack = \
-            candidate[0], candidate[1], candidate[2], candidate[3], candidate[4], candidate[5], candidate[6], candidate[
-                7]
+            candidate_name, candidate_email, mobile, job_role, company_name, branch_name, tech_stack = candidate
 
-            # 2. CREATE A NEW ROW for the new round to keep history intact
+            # --- FIX 2: NEW BILLING GATEKEEPER FOR ADVANCED ROUNDS ---
+            if request.new_status != "Selected":
+                account_details = conn.execute(
+                    text("SELECT available_credits FROM branch_accounts WHERE account_id = :aid FOR UPDATE"),
+                    {"aid": account_id}
+                ).fetchone()
+
+                if not account_details or account_details[0] < 1:
+                    raise HTTPException(status_code=402,
+                                        detail="Insufficient credits for the next interview round. Please top up.")
+            # ---------------------------------------------------------
+
+            # CREATE A NEW ROW for the new round
             expiry_time = datetime.now(timezone.utc) + timedelta(hours=request.deadline_hours)
             row_status = 'Selected' if request.new_status == 'Selected' else 'invite_sent'
 
@@ -721,9 +859,25 @@ async def advance_candidate(request: AdvanceCandidateRequest):
                 "pscore": request.passing_score
             }).scalar()
 
+            # --- FIX 2: DEDUCT CREDIT IF NOT JUST 'SELECTED' ---
+            if request.new_status != "Selected":
+                conn.execute(
+                    text(
+                        "UPDATE branch_accounts SET available_credits = available_credits - 1 WHERE account_id = :aid"),
+                    {"aid": account_id}
+                )
+                conn.execute(
+                    text("""
+                        INSERT INTO billing_transactions (account_id, transaction_type, credits_exchanged, gateway_reference)
+                        VALUES (:aid, 'interview_usage', -1, :ref)
+                    """),
+                    {"aid": account_id, "ref": f"cand_advance_{new_cand_id}"}
+                )
+            # ---------------------------------------------------
+
             conn.commit()
 
-        # 3. Email Logic - Send invite linking to the newly generated candidate_id
+        # Email Logic
         if request.new_status != "Selected":
             invite_link = f"{FRONTEND_BASE_URL}/interview.html?candidate_id={new_cand_id}&job_id={request.job_id}"
 
@@ -742,6 +896,19 @@ async def advance_candidate(request: AdvanceCandidateRequest):
 
         return {"message": "Success", "new_status": request.new_status}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error: {e}")
         raise HTTPException(status_code=500, detail="Database error.")
+
+
+@app.get("/api/billing/balance")
+def get_account_balance(current_account: dict = Depends(get_current_account)):
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT available_credits FROM branch_accounts WHERE account_id = :aid"),
+            {"aid": current_account["account_id"]}
+        ).fetchone()
+
+        return {"available_credits": row[0] if row else 0}

@@ -5,8 +5,7 @@ from unittest.mock import patch, MagicMock
 from fastapi import HTTPException
 
 # Import the app and utilities from your main file
-from main import app, hash_password, verify_password, create_access_token, validate_company_email
-
+from main import app, hash_password, verify_password, create_access_token, validate_company_email, get_current_account
 # Initialize the test client
 client = TestClient(app)
 
@@ -90,3 +89,96 @@ def test_signup_endpoint_success(mock_db_connect, mock_send_email):
     assert response.status_code == 200
     assert "Registration successful" in response.json()["message"]
     mock_send_email.assert_called_once()  # Verify email triggered without actually sending!
+
+
+@patch("main.engine.connect")
+def test_get_account_balance(mock_db_connect):
+    """Test that the balance endpoint correctly fetches the available credits."""
+    mock_conn = MagicMock()
+    mock_db_connect.return_value.__enter__.return_value = mock_conn
+
+    # Mock the database returning 50 credits
+    mock_conn.execute.return_value.fetchone.return_value = (50,)
+
+    # Fake authentication token payload
+    app.dependency_overrides[get_current_account] = lambda: {"account_id": "1"}
+
+    response = client.get("/api/billing/balance")
+
+    assert response.status_code == 200
+    assert response.json()["available_credits"] == 50
+
+    # Clean up override
+    app.dependency_overrides = {}
+
+
+@patch("main.rzp_client.utility.verify_webhook_signature")
+@patch("main.engine.connect")
+def test_razorpay_webhook_adds_credits(mock_db_connect, mock_verify_signature):
+    """Test that a valid Razorpay webhook successfully adds credits to the ledger."""
+    mock_conn = MagicMock()
+    mock_db_connect.return_value.__enter__.return_value = mock_conn
+
+    # Ensure signature verification passes (doesn't raise an exception)
+    mock_verify_signature.return_value = True
+
+    webhook_payload = {
+        "event": "payment.captured",
+        "payload": {
+            "payment": {
+                "entity": {
+                    "id": "pay_TEST12345",
+                    "amount": 15000,  # 150 INR in paise
+                    "notes": {
+                        "account_id": "1",
+                        "credits_purchased": "10"
+                    }
+                }
+            }
+        }
+    }
+
+    response = client.post(
+        "/api/billing/webhook",
+        json=webhook_payload,
+        headers={"X-Razorpay-Signature": "fake_valid_signature"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+
+    # Verify database was called to update balance and insert into ledger
+    assert mock_conn.execute.call_count == 2
+    mock_conn.commit.assert_called_once()
+
+
+@patch("main.engine.connect")
+def test_advance_candidate_fails_with_zero_credits(mock_db_connect):
+    """Test that the billing gatekeeper correctly blocks advancing if credits are 0."""
+    mock_conn = MagicMock()
+    mock_db_connect.return_value.__enter__.return_value = mock_conn
+
+    # 1st call: Fetch candidate details (returns fake data)
+    # 2nd call: Fetch available credits FOR UPDATE (returns 0 credits)
+    mock_conn.execute.return_value.fetchone.side_effect = [
+        ("Fake Name", "fake@test.com", "123", "Role", "Co", "Branch", "Python"),
+        (0,)
+    ]
+
+    app.dependency_overrides[get_current_account] = lambda: {"account_id": "1"}
+
+    payload = {
+        "candidate_id": "55",
+        "job_id": "JD-101",
+        "new_status": "Technical Deep Dive",
+        "duration": 45,
+        "deadline_hours": 48,
+        "passing_score": 7.5
+    }
+
+    response = client.post("/api/candidates/advance", json=payload)
+
+    # Assert the gatekeeper threw a 402 Payment Required error
+    assert response.status_code == 402
+    assert "Insufficient credits" in response.json()["detail"]
+    app.dependency_overrides = {}
