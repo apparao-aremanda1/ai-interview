@@ -6,6 +6,8 @@
     <title>HR Dashboard - AI Interview Platform</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Razorpay Checkout SDK -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0b0f19; }
         .grid-bg {
@@ -28,7 +30,17 @@
                     <span class="text-xs text-slate-400 ml-2 px-2 py-0.5 rounded bg-slate-800 border border-slate-700" id="branchBadge">Loading...</span>
                 </div>
             </div>
+
             <div class="flex items-center space-x-4">
+                <!-- NEW: Credits Counter & Top Up Button -->
+                <div class="flex items-center bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-1.5 shadow-inner">
+                    <span class="text-xs text-slate-400 mr-2">Credits:</span>
+                    <span id="creditBalance" class="text-sm font-bold text-emerald-400">0</span>
+                    <button onclick="openTopUpModal()" class="ml-3 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-600/50 px-2 py-0.5 rounded text-[10px] font-bold uppercase transition">
+                        Top Up
+                    </button>
+                </div>
+
                 <span class="text-sm text-slate-300" id="userEmail">...</span>
                 <button onclick="logout()" class="px-4 py-2 rounded-lg bg-red-950/40 border border-red-800/60 hover:bg-red-900/40 text-red-300 text-xs font-semibold transition">
                     Log Out
@@ -78,8 +90,8 @@
                 </table>
             </div>
         </div>
-
     </main>
+
     <!-- Create JD Modal -->
     <div id="createJdModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-[80]">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-6">
@@ -250,15 +262,11 @@
     <!-- AI Scorecard & Report Modal -->
     <div id="reportModal" class="hidden fixed inset-0 z-[60] items-center justify-center bg-black/80 backdrop-blur-sm p-4">
         <div class="bg-[#0f172a] border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <!-- Modal Header -->
             <div class="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-[#1e293b]">
                 <h3 class="text-lg font-bold text-white">AI Interview Report</h3>
                 <button onclick="closeReportModal()" class="text-slate-400 hover:text-white transition text-sm font-semibold">✕ Close</button>
             </div>
-
-            <!-- Modal Body (Scrollable) -->
             <div class="p-6 overflow-y-auto space-y-6 flex-grow">
-                <!-- Score & Status Banner -->
                 <div class="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700">
                     <div>
                         <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Technical Score</p>
@@ -269,33 +277,17 @@
                         <span id="modalRecommendation" class="px-3 py-1 text-sm font-bold rounded-full bg-slate-700 text-white border border-slate-600">--</span>
                     </div>
                 </div>
-
-                <!-- Strengths -->
                 <div>
-                    <h4 class="text-sm font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                        <span>✅</span> Technical Strengths
-                    </h4>
-                    <p id="modalStrengths" class="text-sm text-slate-300 leading-relaxed bg-slate-900/50 p-4 rounded-lg border border-slate-800 whitespace-pre-line">
-                        Loading...
-                    </p>
+                    <h4 class="text-sm font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-2"><span>✅</span> Technical Strengths</h4>
+                    <p id="modalStrengths" class="text-sm text-slate-300 leading-relaxed bg-slate-900/50 p-4 rounded-lg border border-slate-800 whitespace-pre-line">Loading...</p>
                 </div>
-
-                <!-- Weaknesses -->
                 <div>
-                    <h4 class="text-sm font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                        <span>⚠️</span> Areas for Improvement
-                    </h4>
-                    <p id="modalWeaknesses" class="text-sm text-slate-300 leading-relaxed bg-slate-900/50 p-4 rounded-lg border border-slate-800 whitespace-pre-line">
-                        Loading...
-                    </p>
+                    <h4 class="text-sm font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-2"><span>⚠️</span> Areas for Improvement</h4>
+                    <p id="modalWeaknesses" class="text-sm text-slate-300 leading-relaxed bg-slate-900/50 p-4 rounded-lg border border-slate-800 whitespace-pre-line">Loading...</p>
                 </div>
             </div>
-
-            <!-- Modal Footer -->
             <div class="px-6 py-4 border-t border-slate-700 bg-[#1e293b] flex justify-end items-center gap-3">
-                <button onclick="closeReportModal()" class="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-600 transition">
-                    Close
-                </button>
+                <button onclick="closeReportModal()" class="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-600 transition">Close</button>
             </div>
         </div>
     </div>
@@ -342,6 +334,30 @@
         </div>
     </div>
 
+    <!-- NEW: Billing / Top Up Modal -->
+    <div id="topUpModal" class="hidden fixed inset-0 z-[90] items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-[#0f172a] border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-6">
+            <h3 class="text-lg font-bold text-white mb-2">Buy Interview Credits</h3>
+            <p class="text-xs text-slate-400 mb-6">1 Credit = 1 AI Interview Session. Unused credits never expire.</p>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Select Package</label>
+                    <select id="creditAmount" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:border-emerald-500">
+                        <option value="10">10 Credits (₹1,000)</option>
+                        <option value="50">50 Credits (₹5,000)</option>
+                        <option value="100">100 Credits (₹10,000)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button onclick="closeTopUpModal()" class="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-lg border border-slate-600 transition">Cancel</button>
+                <button onclick="processPayment()" id="payBtn" class="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition shadow-lg shadow-emerald-600/30">Checkout Securely</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="border-t border-slate-800/80 py-6 text-center text-slate-500 text-xs">
         © 2026 Kovi.ai. All rights reserved.
@@ -367,9 +383,96 @@
         document.getElementById("branchBadge").innerText = `${localStorage.getItem("company_name")} (${localStorage.getItem("branch_name")})`;
         document.getElementById("userEmail").innerText = localStorage.getItem("email");
 
+        // Initialize Dashboard on Page Load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (token) {
+                loadJobs();
+                fetchBalance(); // NEW: Fetch credits on load
+            }
+        });
+
         function logout() {
             localStorage.clear();
             window.location.href = "auth.html";
+        }
+
+        // ==========================
+        // BILLING & PAYMENTS LOGIC
+        // ==========================
+        async function fetchBalance() {
+            try {
+                const res = await fetch(`${API_BASE}/api/billing/balance`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('creditBalance').innerText = data.available_credits;
+                }
+            } catch(e) { console.error("Balance fetch error", e); }
+        }
+
+        function openTopUpModal() {
+            document.getElementById('topUpModal').classList.remove('hidden');
+            document.getElementById('topUpModal').classList.add('flex');
+        }
+
+        function closeTopUpModal() {
+            document.getElementById('topUpModal').classList.add('hidden');
+            document.getElementById('topUpModal').classList.remove('flex');
+        }
+
+        async function processPayment() {
+            const btn = document.getElementById('payBtn');
+            const amount = parseInt(document.getElementById('creditAmount').value);
+
+            btn.disabled = true;
+            btn.innerText = "Initializing...";
+
+            try {
+                // 1. Create order on backend
+                const res = await fetch(`${API_BASE}/api/billing/create-order`, {
+                    method: 'POST',
+                    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ credit_amount: amount })
+                });
+
+                if (!res.ok) throw new Error("Failed to initialize payment.");
+                const orderData = await res.json();
+
+                // 2. Open Razorpay Checkout Window
+                const options = {
+                    "key": orderData.key_id,
+                    "amount": orderData.amount,
+                    "currency": orderData.currency,
+                    "name": "Kovi.ai",
+                    "description": `Purchase of ${amount} Interview Credits`,
+                    "order_id": orderData.order_id,
+                    "handler": function (response) {
+                        closeTopUpModal();
+                        // Delay fetch slightly to give backend webhook time to process
+                        setTimeout(fetchBalance, 1500);
+                        alert(`Payment successful! ${amount} credits have been securely added to your account.`);
+                    },
+                    "prefill": {
+                        "email": localStorage.getItem("email")
+                    },
+                    "theme": {
+                        "color": "#059669" // Matches emerald-600
+                    }
+                };
+
+                const rzp = new window.Razorpay(options);
+                rzp.on('payment.failed', function (response){
+                    alert("Payment Failed: " + response.error.description);
+                });
+                rzp.open();
+
+            } catch (err) {
+                alert(err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Checkout Securely";
+            }
         }
 
         // ==========================
@@ -509,10 +612,7 @@
                 document.getElementById("modalJdMustQuestions").value = "";
                 loadJobs();
 
-                // Auto-close the popup after success
-                setTimeout(() => {
-                    closeUploadJdModal();
-                }, 2000);
+                setTimeout(() => closeUploadJdModal(), 2000);
 
             } catch (err) {
                 alertBox.innerText = err.message;
@@ -660,11 +760,21 @@
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || "Failed to send invitation");
+
+                // NEW: 402 Error Interception for Credits
+                if (!res.ok) {
+                    if (res.status === 402) {
+                        openTopUpModal();
+                        throw new Error("Insufficient credits. Please top up your account to invite more candidates.");
+                    }
+                    throw new Error(data.detail || "Failed to send invitation");
+                }
 
                 alertBox.innerText = "Invitation email sent successfully to candidate!";
                 alertBox.className = "p-2.5 rounded-lg text-xs font-medium bg-emerald-900/40 text-emerald-300 border border-emerald-800";
                 alertBox.classList.remove("hidden");
+
+                fetchBalance(); // Fetch balance to show deducted credit
 
                 setTimeout(() => {
                     resetUploadForm();
@@ -688,7 +798,6 @@
                 });
                 currentCandidatesList = await res.json();
 
-                // Sort by creation date descending so newest rounds appear at the top
                 currentCandidatesList.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
                 candSortAsc = false;
@@ -705,7 +814,7 @@
         function sortCandidatesByName() {
             candNameSortAsc = !candNameSortAsc;
             document.getElementById("candNameSortIcon").innerText = candNameSortAsc ? "↑" : "↓";
-            document.getElementById("candSortIcon").innerText = "↕"; // Reset status icon
+            document.getElementById("candSortIcon").innerText = "↕";
 
             currentCandidatesList.sort((a, b) => {
                 const nameA = (a.candidate_name || '').toLowerCase();
@@ -719,7 +828,7 @@
         function sortCandidatesByStatus() {
             candSortAsc = !candSortAsc;
             document.getElementById("candSortIcon").innerText = candSortAsc ? "↑" : "↓";
-            document.getElementById("candNameSortIcon").innerText = "↕"; // Reset name icon
+            document.getElementById("candNameSortIcon").innerText = "↕";
 
             currentCandidatesList.sort((a, b) => {
                 if (candSortAsc) return a.status.localeCompare(b.status);
@@ -731,7 +840,6 @@
         function renderCandidatesTable() {
             const tbody = document.getElementById("candidatesTableBody");
 
-            // 1. Handle the Name Search Filter
             const searchInput = document.getElementById("candSearch");
             const searchVal = searchInput ? searchInput.value.toLowerCase() : "";
 
@@ -745,7 +853,6 @@
                 return;
             }
 
-            // 2. Identify the LATEST round for each candidate so we only show "Schedule Next" once per person
             const latestCandIds = new Set();
             const emailGroups = {};
 
@@ -756,33 +863,25 @@
                 } else {
                     const existingDate = new Date(emailGroups[c.email].created_at || 0);
                     if (rowDate > existingDate) {
-                        emailGroups[c.email] = c; // Update with the newer row
+                        emailGroups[c.email] = c;
                     }
                 }
             });
 
-            // Store the ID of the most recent row for each unique email
             Object.values(emailGroups).forEach(c => latestCandIds.add(c.candidate_id));
 
-            // 3. Render the Table Rows
             tbody.innerHTML = filteredList.map(c => {
                 const interviewType = c.interview_type || (activeJobData ? activeJobData.interview_type : 'N/A');
                 let reportButton = `<span class="text-slate-500 text-[10px]">-</span>`;
                 let actionLink = `<span class="text-slate-500 text-[10px]">-</span>`;
                 let statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800">${c.status}</span>`;
 
-                // Check if this specific row is the most recent pipeline stage for this candidate
                 const isLatestRound = latestCandIds.has(c.candidate_id);
 
                 if (c.status === "Pass") {
                     statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-900/80 text-emerald-300 border border-emerald-800">Pass</span>`;
-                    reportButton = `
-                        <button onclick="openReportModalById('${c.candidate_id}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs transition border border-blue-500 shadow shadow-blue-900">
-                            📄 View
-                        </button>
-                    `;
+                    reportButton = `<button onclick="openReportModalById('${c.candidate_id}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs transition border border-blue-500 shadow shadow-blue-900">📄 View</button>`;
 
-                    // ONLY allow scheduling if this is their latest active round
                     if (isLatestRound) {
                         actionLink = `<button onclick="openNextRoundModal('${c.candidate_id}')" class="text-indigo-400 hover:text-indigo-300 font-semibold text-xs underline">Schedule Next →</button>`;
                     } else {
@@ -791,11 +890,7 @@
 
                 } else if (c.status === "Fail") {
                     statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-900/80 text-red-300 border border-red-800">Fail</span>`;
-                    reportButton = `
-                        <button onclick="openReportModalById('${c.candidate_id}')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-xs transition border border-slate-600">
-                            📄 View
-                        </button>
-                    `;
+                    reportButton = `<button onclick="openReportModalById('${c.candidate_id}')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-xs transition border border-slate-600">📄 View</button>`;
                 } else if (c.status === "Selected") {
                     statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-900/80 text-purple-300 border border-purple-800">Selected 🎉</span>`;
                 }
@@ -893,9 +988,16 @@
                 if (response.ok) {
                     closeNextRoundModal();
                     loadCandidates(activeJobId);
+                    fetchBalance(); // Fetch balance to show deducted credit
                 } else {
-                    const errorData = await response.json();
-                    alert("Failed to advance candidate: " + (errorData.detail || "Unknown error"));
+                    // NEW: 402 Error Interception for Credits
+                    if (response.status === 402) {
+                        openTopUpModal();
+                        alert("Insufficient credits. Please top up your account to schedule the next round.");
+                    } else {
+                        const errorData = await response.json();
+                        alert("Failed to advance candidate: " + (errorData.detail || "Unknown error"));
+                    }
                 }
             } catch (error) {
                 console.error("Error advancing candidate:", error);
@@ -905,13 +1007,6 @@
                 btn.innerText = "Proceed";
             }
         }
-
-        // Initialize Dashboard on Page Load
-        document.addEventListener('DOMContentLoaded', () => {
-            if (token) {
-                loadJobs();
-            }
-        });
 
         function openUploadJdModal() {
             document.getElementById("modalJdFile").value = "";
