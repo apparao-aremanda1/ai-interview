@@ -806,6 +806,7 @@ class AdvanceCandidateRequest(BaseModel):
     duration: int = 45
     deadline_hours: int = 48
     passing_score: float = 7.5
+    evaluation_level: str = "mid"
 
 
 @app.post("/api/candidates/advance")
@@ -850,10 +851,10 @@ async def advance_candidate(
             row_status = 'Selected' if request.new_status == 'Selected' else 'invite_sent'
 
             insert_query = text("""
-                INSERT INTO candidates (account_id, job_id, candidate_name, email, mobile, status, interview_duration, expiry_time, interview_type, passing_score)
-                VALUES (:aid, :jid, :name, :email, :mobile, :status, :duration, :expiry, :itype, :pscore)
-                RETURNING candidate_id
-            """)
+                            INSERT INTO candidates (account_id, job_id, candidate_name, email, mobile, status, interview_duration, expiry_time, interview_type, passing_score, evaluation_level)
+                            VALUES (:aid, :jid, :name, :email, :mobile, :status, :duration, :expiry, :itype, :pscore, :eval_level)
+                            RETURNING candidate_id
+                        """)
 
             new_cand_id = conn.execute(insert_query, {
                 "aid": account_id,
@@ -865,7 +866,8 @@ async def advance_candidate(
                 "duration": request.duration,
                 "expiry": expiry_time,
                 "itype": request.new_status,
-                "pscore": request.passing_score
+                "pscore": request.passing_score,
+                "eval_level": request.evaluation_level  # <-- ADD THIS LINE
             }).scalar()
 
             # --- FIX 2: DEDUCT CREDIT IF NOT JUST 'SELECTED' ---

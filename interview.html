@@ -192,6 +192,7 @@
 
         let currentAudioPlayer = null;
         let interviewEnded = false;
+        let pastElapsedSeconds = 0;
 
         const MAX_RECORDING_TIME = 300000;
 
@@ -337,17 +338,21 @@
         }
 
         function updateTimer() {
-            const diff = Math.floor((Date.now() - startTime) / 1000);
-            const m = String(Math.floor(diff / 60)).padStart(2, '0');
-            const s = String(diff % 60).padStart(2, '0');
+            // Calculate total time (past sessions + current session)
+            const currentSessionDiff = Math.floor((Date.now() - startTime) / 1000);
+            const totalDiff = pastElapsedSeconds + currentSessionDiff;
+
+            const m = String(Math.floor(totalDiff / 60)).padStart(2, '0');
+            const s = String(totalDiff % 60).padStart(2, '0');
             document.getElementById('timerDisplay').innerText = `${m}:${s}`;
 
             const maxMinutes = getInterviewDurationMinutes();
             const maxSeconds = maxMinutes * 60;
 
-            if (diff >= maxSeconds && !interviewEnded) {
+            // FIX: Removed the instruction to click the non-existent button
+            if (totalDiff >= maxSeconds && !interviewEnded) {
                 const statusTxt = document.getElementById('agentStatusText');
-                statusTxt.innerText = "Interview time is up. Please click 'End Session'.";
+                statusTxt.innerText = "Interview time is up. Wrapping up session...";
             }
         }
 
@@ -417,6 +422,10 @@
                     document.getElementById('aiIndicator').classList.remove('hidden');
                 }
                 else if (data.type === "ai_response") {
+                    if (data.elapsed_seconds !== undefined) {
+                        pastElapsedSeconds = data.elapsed_seconds;
+                        startTime = Date.now(); // Reset baseline so we don't double count
+                    }
                     const isProctorAlert = data.text && (data.text.includes("PROCTORING WARNING") || data.text.includes("🚨"));
                     isFinalAiMessage = data.is_wrap_up_response === true;
 
@@ -557,15 +566,17 @@
             reader.onloadend = () => {
                 const base64Audio = reader.result.split(',')[1];
 
-                const diff = Math.floor((Date.now() - startTime) / 1000);
+                // Calculate the true total elapsed time
+                const totalDiff = pastElapsedSeconds + Math.floor((Date.now() - startTime) / 1000);
                 const maxMinutes = getInterviewDurationMinutes();
-                const isWrapUp = diff >= ((maxMinutes - 1) * 60);
+                const isWrapUp = totalDiff >= ((maxMinutes - 1) * 60);
 
                 ws.send(JSON.stringify({
                     type: "audio_input",
                     audio_b64: base64Audio,
                     voice: resolveVoice(),
                     client_timestamp_ms: Date.now(),
+                    elapsed_seconds: totalDiff, // <-- ADD THIS LINE
                     wrap_up: isWrapUp
                 }));
             };
