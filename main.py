@@ -305,6 +305,7 @@ class SaveJDRequest(BaseModel):
     passing_score: Optional[float] = 7.0
     skills_to_test: Optional[str] = ""
     must_questions: Optional[str] = ""
+    evaluation_level: Optional[str] = "mid"
 
 
 class ResumeParsedData(BaseModel):
@@ -323,6 +324,7 @@ class AddCandidateRequest(BaseModel):
     deadline_hours: Optional[int] = 48
     passing_score: Optional[float] = 7.5
     must_questions: Optional[str] = ""
+    evaluation_level: Optional[str] = "mid"
 
 
 class PurchaseRequest(BaseModel):
@@ -576,9 +578,13 @@ async def parse_resume(file: UploadFile = File(...), current_account: dict = Dep
 def save_job(payload: SaveJDRequest, current_account: dict = Depends(get_current_account)):
     account_id = current_account["account_id"]
     with engine.connect() as conn:
+        # 1. Ensure the column exists safely
+        conn.execute(
+            text("ALTER TABLE job_descriptions ADD COLUMN IF NOT EXISTS evaluation_level VARCHAR(50) DEFAULT 'mid'"))
+
         query = text("""
-            INSERT INTO job_descriptions (job_id, account_id, job_role, seniority, interview_type, tech_stack, interviewer_voice, persona, passing_score, skills_to_test, must_questions)
-            VALUES (:jid, :aid, :role, :sen, :itype, :tech, :voice, :persona, :score, :skills, :questions)
+            INSERT INTO job_descriptions (job_id, account_id, job_role, seniority, interview_type, tech_stack, interviewer_voice, persona, passing_score, skills_to_test, must_questions, evaluation_level)
+            VALUES (:jid, :aid, :role, :sen, :itype, :tech, :voice, :persona, :score, :skills, :questions, :eval_level)
             ON CONFLICT (account_id, job_id) 
             DO UPDATE SET 
                 job_role = EXCLUDED.job_role,
@@ -589,7 +595,8 @@ def save_job(payload: SaveJDRequest, current_account: dict = Depends(get_current
                 persona = EXCLUDED.persona,
                 passing_score = EXCLUDED.passing_score,
                 skills_to_test = EXCLUDED.skills_to_test,
-                must_questions = EXCLUDED.must_questions
+                must_questions = EXCLUDED.must_questions,
+                evaluation_level = EXCLUDED.evaluation_level
         """)
         conn.execute(query, {
             "jid": payload.job_id,
@@ -602,7 +609,8 @@ def save_job(payload: SaveJDRequest, current_account: dict = Depends(get_current
             "persona": payload.persona,
             "score": payload.passing_score,
             "skills": payload.skills_to_test,
-            "questions": payload.must_questions
+            "questions": payload.must_questions,
+            "eval_level": payload.evaluation_level  # <-- ADD THIS
         })
         conn.commit()
     return {"message": f"Job {payload.job_id} saved successfully with passing score {payload.passing_score}"}
@@ -674,10 +682,10 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
         pscore = payload.passing_score or job["passing_score"] or 7.5
 
         query = text("""
-            INSERT INTO candidates (account_id, job_id, candidate_name, email, mobile, status, interview_duration, expiry_time, interview_type, passing_score)
-            VALUES (:aid, :jid, :name, :email, :mobile, 'invite_sent', :duration, :expiry, :itype, :pscore)
-            RETURNING candidate_id
-        """)
+                    INSERT INTO candidates (account_id, job_id, candidate_name, email, mobile, status, interview_duration, expiry_time, interview_type, passing_score, evaluation_level)
+                    VALUES (:aid, :jid, :name, :email, :mobile, 'invite_sent', :duration, :expiry, :itype, :pscore, :eval_level)
+                    RETURNING candidate_id
+                """)
         cand_id = conn.execute(query, {
             "aid": account_id,
             "jid": job_id,
@@ -687,7 +695,8 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
             "duration": payload.interview_duration,
             "expiry": expiry_time,
             "itype": itype,
-            "pscore": pscore
+            "pscore": pscore,
+            "eval_level": payload.evaluation_level
         }).scalar()
 
         # 2. Deduct 1 credit

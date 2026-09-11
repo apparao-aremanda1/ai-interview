@@ -118,8 +118,20 @@
                         <option value="Full Stack Evaluation">Full Stack Evaluation</option>
                     </select>
                 </div>
+
                 <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">3. Must-Ask Questions <span class="text-slate-500 normal-case tracking-normal font-medium">(Optional - Added to AI Prompt)</span></label>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">3. Evaluation Level</label>
+                    <select id="evaluationLevel" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition" onchange="updateEvalHint(this.value)">
+                        <option value="junior">Junior / Foundation</option>
+                        <option value="mid" selected>Mid-Level / Execution</option>
+                        <option value="senior">Senior / Architecture</option>
+                    </select>
+                    <!-- Subtle helper text below the dropdown -->
+                    <p id="evalLevelHint" class="text-[11px] text-slate-500 mt-2 font-medium">( Focuses on clean code, framework proficiency, and independent problem-solving.)</p>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">4. Must-Ask Questions <span class="text-slate-500 normal-case tracking-normal font-medium">(Optional - Added to AI Prompt)</span></label>
                     <textarea id="modalJdMustQuestions" rows="3" placeholder="e.g., 1. Walk me through a time you optimized a slow SQL query." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition resize-y"></textarea>
                 </div>
             </div>
@@ -192,6 +204,14 @@
                             <option value="Behavioral & Culture Fit">Behavioral & Culture Fit</option>
                             <option value="System Design">System Design</option>
                             <option value="Full Stack Evaluation">Full Stack Evaluation</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Technical Evaluation Level</label>
+                        <select id="formEvaluationLevel" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                            <option value="junior">Junior / Foundation</option>
+                            <option value="mid" selected>Mid-Level / Execution</option>
+                            <option value="senior">Senior / Architecture</option>
                         </select>
                     </div>
                     <div class="col-span-1">
@@ -390,6 +410,19 @@
                 fetchBalance(); // NEW: Fetch credits on load
             }
         });
+
+        const EVAL_HINTS = {
+                          junior: "( Focuses on syntax, core fundamentals, basic logic, and trainability.)",
+                          mid: "( Focuses on clean code, framework proficiency, and independent problem-solving.)",
+                          senior: "( Focuses on system design, scalability, technical trade-offs, and enterprise constraints.)"
+                        };
+
+        function updateEvalHint(selectedLevel) {
+          const hintEl = document.getElementById("evalLevelHint");
+          if (hintEl && EVAL_HINTS[selectedLevel]) {
+            hintEl.innerText = EVAL_HINTS[selectedLevel];
+          }
+        }
 
         function logout() {
             localStorage.clear();
@@ -593,6 +626,7 @@
 
                 parsedData.interview_type = selectedInterviewType;
                 parsedData.must_questions = manualQuestions; // Unconditional override
+                parsedData.evaluation_level = document.getElementById("evaluationLevel").value;
 
                 const saveRes = await fetch(`${API_BASE}/api/jobs`, {
                     method: "POST",
@@ -701,6 +735,7 @@
                 document.getElementById("formCandidateEmail").value = parsedData.email_id || "";
                 document.getElementById("formMobile").value = parsedData.mobile_number || "";
                 document.getElementById("formRole").value = activeJobData.job_role || "";
+                document.getElementById("formEvaluationLevel").value = activeJobData.evaluation_level || "mid";
 
                 const interviewSelect = document.getElementById("formInterviewType");
                 let matchedType = Array.from(interviewSelect.options).some(opt => opt.value === activeJobData.interview_type);
@@ -743,6 +778,7 @@
                 tech_stack: document.getElementById("formTechStack").value,
                 deadline_hours: parseInt(document.getElementById("formDeadline").value) || 48,
                 passing_score: passingScoreVal ? parseFloat(passingScoreVal) : null,
+                evaluation_level: document.getElementById("formEvaluationLevel").value,
                 must_questions: document.getElementById("formMustQuestions").value
             };
 
