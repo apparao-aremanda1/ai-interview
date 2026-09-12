@@ -406,7 +406,8 @@
                     tech_stack: interviewConfig.tech_stack,
                     seniority: interviewConfig.seniority,
                     round_type: interviewConfig.interview_type,
-                    must_questions: interviewConfig.must_questions, // <-- ADD THIS LINE
+                    must_questions: interviewConfig.must_questions,
+                    passing_score: interviewConfig.passing_score || 7.5,
                     voice: engineVoice
                 }));
             };
@@ -569,7 +570,7 @@
                 // Calculate the true total elapsed time
                 const totalDiff = pastElapsedSeconds + Math.floor((Date.now() - startTime) / 1000);
                 const maxMinutes = getInterviewDurationMinutes();
-                const isWrapUp = totalDiff >= ((maxMinutes - 1) * 60);
+                const isWrapUp = totalDiff >= (maxMinutes * 60);
 
                 ws.send(JSON.stringify({
                     type: "audio_input",
