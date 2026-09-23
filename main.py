@@ -1016,3 +1016,43 @@ def download_transcript(candidate_id: str, current_account: dict = Depends(get_c
             media_type="application/pdf",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
+
+
+@app.delete("/api/jobs/{job_id}")
+def delete_job(job_id: str, current_account: dict = Depends(get_current_account)):
+    account_id = current_account["account_id"]
+    with engine.connect() as conn:
+        # 1. Verify job exists and is actually closed
+        job = conn.execute(
+            text("SELECT status FROM job_descriptions WHERE account_id = :aid AND job_id = :jid"),
+            {"aid": account_id, "jid": job_id}
+        ).fetchone()
+
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found.")
+        if job[0] != "closed":
+            raise HTTPException(status_code=400, detail="Only closed jobs can be deleted. Please close the job first.")
+
+        # 2. Delete data sequentially to respect database relationships
+        # A. Delete interview sessions belonging to this job's candidates
+        conn.execute(
+            text("""
+                        DELETE FROM interview_sessions 
+                        WHERE job_id = :jid AND candidate_id IN (
+                            SELECT CAST(candidate_id AS VARCHAR) FROM candidates WHERE account_id = :aid AND job_id = :jid
+                        )
+                    """),
+            {"aid": account_id, "jid": job_id}
+        )
+        # B. Delete all candidates associated with the job
+        conn.execute(
+            text("DELETE FROM candidates WHERE account_id = :aid AND job_id = :jid"),
+            {"aid": account_id, "jid": job_id}
+        )
+        # C. Finally, delete the Job Description itself
+        conn.execute(
+            text("DELETE FROM job_descriptions WHERE account_id = :aid AND job_id = :jid"),
+            {"aid": account_id, "jid": job_id}
+        )
+        conn.commit()
+    return {"message": "Job, candidates, and interview records successfully deleted."}
