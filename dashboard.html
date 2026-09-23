@@ -263,15 +263,16 @@
                         <thead>
                             <tr class="border-b border-slate-800 text-slate-400 uppercase tracking-wider sticky top-0 bg-slate-900 z-10">
                                 <th class="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:text-white select-none transition" onclick="sortCandidatesByName()">Name <span id="candNameSortIcon" class="text-[10px] ml-1">↕</span></th>
-                                <th class="py-2.5 px-3">Email</th>
+                                <th class="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:text-white select-none transition" onclick="sortCandidatesByEmail()">Email <span id="candEmailSortIcon" class="text-[10px] ml-1">↕</span></th>
                                 <th class="py-2.5 px-3">Interview Type</th>
                                 <th class="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:text-white select-none transition" onclick="sortCandidatesByStatus()">Status <span id="candSortIcon" class="text-[10px] ml-1">↕</span></th>
+                                <th class="py-2.5 px-3 text-center">Q & A</th>
                                 <th class="py-2.5 px-3 text-right">Report</th>
                                 <th class="py-2.5 px-3 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody id="candidatesTableBody" class="divide-y divide-slate-800/50 text-slate-300">
-                            <tr><td colspan="6" class="py-4 text-center text-slate-500">Select a job to view candidates.</td></tr>
+                            <tr><td colspan="7" class="py-4 text-center text-slate-500">Select a job to view candidates.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -857,11 +858,13 @@
         }
 
         let candNameSortAsc = true;
+        let candEmailSortAsc = true;
 
         function sortCandidatesByName() {
             candNameSortAsc = !candNameSortAsc;
             document.getElementById("candNameSortIcon").innerText = candNameSortAsc ? "↑" : "↓";
             document.getElementById("candSortIcon").innerText = "↕";
+            document.getElementById("candEmailSortIcon").innerText = "↕"; // Reset email icon
 
             currentCandidatesList.sort((a, b) => {
                 const nameA = (a.candidate_name || '').toLowerCase();
@@ -876,10 +879,27 @@
             candSortAsc = !candSortAsc;
             document.getElementById("candSortIcon").innerText = candSortAsc ? "↑" : "↓";
             document.getElementById("candNameSortIcon").innerText = "↕";
+            document.getElementById("candEmailSortIcon").innerText = "↕"; // Reset email icon
 
             currentCandidatesList.sort((a, b) => {
                 if (candSortAsc) return a.status.localeCompare(b.status);
                 return b.status.localeCompare(a.status);
+            });
+            renderCandidatesTable();
+        }
+
+        // NEW: Email Sorting Function
+        function sortCandidatesByEmail() {
+            candEmailSortAsc = !candEmailSortAsc;
+            document.getElementById("candEmailSortIcon").innerText = candEmailSortAsc ? "↑" : "↓";
+            document.getElementById("candNameSortIcon").innerText = "↕"; // Reset name icon
+            document.getElementById("candSortIcon").innerText = "↕"; // Reset status icon
+
+            currentCandidatesList.sort((a, b) => {
+                const emailA = (a.email || '').toLowerCase();
+                const emailB = (b.email || '').toLowerCase();
+                if (candEmailSortAsc) return emailA.localeCompare(emailB);
+                return emailB.localeCompare(emailA);
             });
             renderCandidatesTable();
         }
@@ -896,7 +916,7 @@
             }
 
             if (filteredList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">No candidates match your search.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-500">No candidates match your search.</td></tr>`;
                 return;
             }
 
@@ -919,6 +939,7 @@
 
             tbody.innerHTML = filteredList.map(c => {
                 const interviewType = c.interview_type || (activeJobData ? activeJobData.interview_type : 'N/A');
+                let qaButton = `<span class="text-slate-500 text-[10px]">-</span>`;
                 let reportButton = `<span class="text-slate-500 text-[10px]">-</span>`;
                 let actionLink = `<span class="text-slate-500 text-[10px]">-</span>`;
                 let statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800">${c.status}</span>`;
@@ -927,6 +948,7 @@
 
                 if (c.status === "Pass") {
                     statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-900/80 text-emerald-300 border border-emerald-800">Pass</span>`;
+                    qaButton = `<button onclick="downloadTranscript('${c.candidate_id}', '${c.candidate_name}', '${interviewType}')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs transition border border-slate-600 shadow" title="Download Q&A Transcript">⬇️ File</button>`;
                     reportButton = `<button onclick="openReportModalById('${c.candidate_id}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs transition border border-blue-500 shadow shadow-blue-900">📄 View</button>`;
 
                     if (isLatestRound) {
@@ -937,6 +959,7 @@
 
                 } else if (c.status === "Fail") {
                     statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-900/80 text-red-300 border border-red-800">Fail</span>`;
+                    qaButton = `<button onclick="downloadTranscript('${c.candidate_id}', '${c.candidate_name}', '${interviewType}')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs transition border border-slate-600 shadow" title="Download Q&A Transcript">⬇️ File</button>`;
                     reportButton = `<button onclick="openReportModalById('${c.candidate_id}')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-xs transition border border-slate-600">📄 View</button>`;
                 } else if (c.status === "Selected") {
                     statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-900/80 text-purple-300 border border-purple-800">Selected 🎉</span>`;
@@ -948,11 +971,56 @@
                     <td class="py-3 px-3 text-slate-400 whitespace-nowrap">${c.email || 'N/A'}</td>
                     <td class="py-3 px-3 text-slate-400 whitespace-nowrap">${interviewType}</td>
                     <td class="py-3 px-3 whitespace-nowrap">${statusBadge}</td>
+                    <td class="py-3 px-3 text-center whitespace-nowrap">${qaButton}</td>
                     <td class="py-3 px-3 text-right whitespace-nowrap">${reportButton}</td>
                     <td class="py-3 px-3 text-right whitespace-nowrap">${actionLink}</td>
                 </tr>
                 `;
             }).join('');
+        }
+
+        // ==========================
+        // TRANSCRIPT DOWNLOAD LOGIC
+        // ==========================
+        async function downloadTranscript(candidateId, candidateName, interviewType) {
+            const targetUrl = `${API_BASE}/api/candidates/${candidateId}/transcript`;
+
+            try {
+                const res = await fetch(targetUrl, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+
+                if (!res.ok) {
+                    let errMsg = `Server returned status ${res.status}`;
+                    try {
+                        const errData = await res.json();
+                        errMsg = errData.detail || errMsg;
+                    } catch (e) {
+                        errMsg = `Fatal Server Error (${res.status}). Check Cloud Run logs.`;
+                    }
+                    throw new Error(errMsg);
+                }
+
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+
+                // Format: CandidateName_InterviewType.pdf
+                const safeName = (candidateName || "Candidate").replace(/[^a-z0-9]/gi, '_');
+                const safeType = (interviewType || "Interview").replace(/[^a-z0-9]/gi, '_');
+
+                a.download = `${safeName}_${safeType}.pdf`;
+
+                document.body.appendChild(a);
+                a.click();
+
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error("Download Error Details:", err);
+                alert(`Error: ${err.message}`);
+            }
         }
 
         // ==========================

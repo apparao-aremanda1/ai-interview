@@ -2,6 +2,7 @@ import io
 import logging
 import os
 import smtplib
+import json
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from typing import Optional
@@ -13,8 +14,9 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Request
 from fastapi import HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fpdf import FPDF
 from jose import jwt, JWTError
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
@@ -72,6 +74,7 @@ llm = ChatAnthropic(
 # Initialize the Razorpay Client
 rzp_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
+
 # --- Helper Utilities ---
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -95,7 +98,7 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
         text_content += (page.extract_text() or "") + "\n"
     return text_content
 
-# Add this new helper function for Word documents
+
 def extract_text_from_docx(file_bytes: bytes) -> str:
     doc = docx.Document(io.BytesIO(file_bytes))
     return "\n".join([paragraph.text for paragraph in doc.paragraphs])
@@ -362,6 +365,7 @@ def create_razorpay_order(payload: PurchaseRequest, current_account: dict = Depe
         logger.error(f"Razorpay Order Creation Failed: {e}")
         raise HTTPException(status_code=500, detail="Could not initialize payment.")
 
+
 # ==========================================
 # Frontend Page Routing Endpoints
 # ==========================================
@@ -610,7 +614,7 @@ def save_job(payload: SaveJDRequest, current_account: dict = Depends(get_current
             "score": payload.passing_score,
             "skills": payload.skills_to_test,
             "questions": payload.must_questions,
-            "eval_level": payload.evaluation_level  # <-- ADD THIS
+            "eval_level": payload.evaluation_level
         })
         conn.commit()
     return {"message": f"Job {payload.job_id} saved successfully with passing score {payload.passing_score}"}
@@ -812,7 +816,7 @@ class AdvanceCandidateRequest(BaseModel):
 @app.post("/api/candidates/advance")
 async def advance_candidate(
         request: AdvanceCandidateRequest,
-        current_account: dict = Depends(get_current_account)  # <-- FIX 1: Security added
+        current_account: dict = Depends(get_current_account)
 ):
     account_id = current_account["account_id"]
 
@@ -834,7 +838,7 @@ async def advance_candidate(
 
             candidate_name, candidate_email, mobile, job_role, company_name, branch_name, tech_stack = candidate
 
-            # --- FIX 2: NEW BILLING GATEKEEPER FOR ADVANCED ROUNDS ---
+            # --- BILLING GATEKEEPER FOR ADVANCED ROUNDS ---
             if request.new_status != "Selected":
                 account_details = conn.execute(
                     text("SELECT available_credits FROM branch_accounts WHERE account_id = :aid FOR UPDATE"),
@@ -867,10 +871,10 @@ async def advance_candidate(
                 "expiry": expiry_time,
                 "itype": request.new_status,
                 "pscore": request.passing_score,
-                "eval_level": request.evaluation_level  # <-- ADD THIS LINE
+                "eval_level": request.evaluation_level
             }).scalar()
 
-            # --- FIX 2: DEDUCT CREDIT IF NOT JUST 'SELECTED' ---
+            # --- DEDUCT CREDIT IF NOT JUST 'SELECTED' ---
             if request.new_status != "Selected":
                 conn.execute(
                     text(
@@ -923,3 +927,92 @@ def get_account_balance(current_account: dict = Depends(get_current_account)):
         ).fetchone()
 
         return {"available_credits": row[0] if row else 0}
+
+
+@app.get("/api/candidates/{candidate_id}/transcript")
+def download_transcript(candidate_id: str, current_account: dict = Depends(get_current_account)):
+    account_id = current_account["account_id"]
+    with engine.connect() as conn:
+        # Fetch candidate_name, interview_type, and message_history
+        query = text("""
+                    SELECT c.candidate_name, c.interview_type, i.message_history
+                    FROM candidates c
+                    JOIN interview_sessions i ON CAST(c.candidate_id AS VARCHAR) = i.candidate_id AND c.job_id = i.job_id
+                    WHERE CAST(c.candidate_id AS VARCHAR) = :cid AND c.account_id = :aid
+                """)
+        row = conn.execute(query, {"cid": candidate_id, "aid": account_id}).mappings().fetchone()
+
+        if not row or not row["message_history"]:
+            raise HTTPException(status_code=404, detail="Transcript not found or interview incomplete.")
+
+        candidate_name = row["candidate_name"] or "Candidate"
+        interview_type = row["interview_type"] or "Interview"
+        messages = row["message_history"]
+
+        if isinstance(messages, str):
+            try:
+                messages = json.loads(messages)
+            except Exception:
+                pass
+
+        # --- Initialize PDF ---
+        pdf = FPDF()
+        pdf.add_page()
+
+        # 1. Title
+        pdf.set_font("helvetica", style="B", size=16)
+        pdf.multi_cell(0, 10, f"INTERVIEW TRANSCRIPT: {candidate_name.upper()}", align="C")
+        pdf.ln(5)
+
+        # 2. Disclaimer Box (Red text)
+        pdf.set_font("helvetica", style="I", size=10)
+        pdf.set_text_color(180, 0, 0)
+        disclaimer = (
+            "DISCLAIMER: This transcript is RAW and UNEDITED. It is preserved exactly "
+            "as captured by the Speech-to-Text engine to maintain the authenticity, "
+            "pacing, and phrasing of the candidate's live spoken responses. "
+            "Grammar mistakes and transcription artifacts are expected and intentionally retained."
+        )
+        pdf.multi_cell(0, 6, disclaimer)
+        pdf.ln(8)
+
+        # 3. "Q & A" Header (Styled like a column name block)
+        pdf.set_fill_color(230, 230, 240)  # Light gray background
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_font("helvetica", style="B", size=12)
+        pdf.cell(0, 10, "  Q & A TRANSCRIPT", border=1, new_x="LMARGIN", new_y="NEXT", fill=True)
+        pdf.ln(4)
+
+        # 4. Conversation History (Q: and A: Format)
+        for msg in messages:
+            role = msg.get("role", "")
+            if role == "system":
+                continue
+
+            # Encode/Decode to safely ignore weird emojis/unsupported unicode characters
+            content = msg.get("content", "").encode('latin-1', 'replace').decode('latin-1')
+
+            if role == "assistant":
+                # Kovi AI is the Question (Bold)
+                pdf.set_font("helvetica", style="B", size=11)
+                pdf.multi_cell(0, 6, f"Q: {content}")
+            else:
+                # Candidate is the Answer (Regular text)
+                pdf.set_font("helvetica", style="", size=11)
+                pdf.multi_cell(0, 6, f"A: {content}")
+
+            pdf.ln(4)  # Space between interactions
+
+        # Output PDF to bytes
+        pdf_bytes = pdf.output()
+
+        # Clean up strings for safe file naming
+        safe_name = "".join(c if c.isalnum() else "_" for c in candidate_name)
+        safe_type = "".join(c if c.isalnum() else "_" for c in interview_type)
+        filename = f"{safe_name}_{safe_type}.pdf"
+
+        return Response(
+            content=bytes(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
