@@ -198,13 +198,14 @@
                 <div class="grid grid-cols-4 gap-4">
                     <div class="col-span-1">
                         <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Interview Type</label>
-                        <select id="formInterviewType" onchange="updateDuration()" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <select id="formInterviewType" onchange="updateDuration(); updateInterviewTypeHint(this.value)" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
                             <option value="Initial Screening">Initial Screening</option>
                             <option value="Technical Deep Dive">Technical Deep Dive</option>
                             <option value="Behavioral & Culture Fit">Behavioral & Culture Fit</option>
                             <option value="System Design">System Design</option>
                             <option value="Full Stack Evaluation">Full Stack Evaluation</option>
                         </select>
+                        <p id="interviewTypeHint" class="text-[10px] text-slate-500 mt-1.5 font-medium leading-tight">( Focuses on past projects, resume background, and high-level experience. )</p>
                     </div>
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Technical Evaluation Level</label>
@@ -425,6 +426,21 @@
                           mid: "( Focuses on clean code, framework proficiency, and independent problem-solving.)",
                           senior: "( Focuses on system design, scalability, technical trade-offs, and enterprise constraints.)"
                         };
+
+        const INTERVIEW_HINTS = {
+            "Initial Screening": "( Focuses on past projects, resume background, and high-level experience. )",
+            "Technical Deep Dive": "( Focuses strictly on core technology syntax, frameworks, and coding logic. )",
+            "Behavioral & Culture Fit": "( Focuses on leadership, teamwork, conflict resolution, and soft skills. )",
+            "System Design": "( Focuses on system architecture, database scaling, and technical trade-offs. )",
+            "Full Stack Evaluation": "( Focuses on end-to-end development spanning both frontend and backend. )"
+        };
+
+        function updateInterviewTypeHint(selectedType) {
+            const hintEl = document.getElementById("interviewTypeHint");
+            if (hintEl && INTERVIEW_HINTS[selectedType]) {
+                hintEl.innerText = INTERVIEW_HINTS[selectedType];
+            }
+        }
 
         function updateEvalHint(selectedLevel) {
           const hintEl = document.getElementById("evalLevelHint");
@@ -783,6 +799,7 @@
                 }
 
                 updateDuration();
+                updateInterviewTypeHint(interviewSelect.value);
 
                 document.getElementById("formTechStack").value = activeJobData.tech_stack || "";
                 document.getElementById("formPassingScore").value = activeJobData.passing_score || "";
