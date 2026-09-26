@@ -183,15 +183,15 @@ def send_activation_email(to_email: str, token: str):
 
 
 def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_role: str, interview_type: str,
-                                interview_duration: int, tech_stack: str,
-                                company_name: str, branch_name: str, invite_link: str, deadline_hours: int = 48):
+                                interview_duration: int, tech_stack: str, company_name: str, branch_name: str,
+                                invite_link: str, hr_email: str, deadline_hours: int = 48):
     smtp_host = os.getenv("SMTP_HOST")
     smtp_port = int(os.getenv("SMTP_PORT", 587))
     smtp_user = os.getenv("SMTP_USER")
     smtp_pass = os.getenv("SMTP_PASS")
 
     # Dynamic Deadline Calculation
-    deadline_str = (datetime.now() + timedelta(hours=deadline_hours)).strftime("%B %d, %Y at %I:%M %p")
+    deadline_str = (datetime.now(timezone.utc) + timedelta(hours=deadline_hours)).strftime("%B %d, %Y at %I:%M %p UTC")
 
     if not smtp_host or not smtp_user or not smtp_pass:
         print("\n==============================")
@@ -200,9 +200,20 @@ def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_r
         print("==============================\n")
         return
 
+    # --- DYNAMIC FOCUS AREA LOGIC ---
+    if "Screening" in interview_type:
+        focus_text = "Project experience, past background and high-level technical skills."
+    elif "Deep Dive" in interview_type:
+        focus_text = f"Technical syntax, coding logic and in-depth mastery of: {tech_stack}"
+    elif "Design" in interview_type:
+        focus_text = "System architecture, scalability and technical trade-offs."
+    else:
+        focus_text = f"General technical proficiency and problem-solving in: {tech_stack}"
+
     msg = EmailMessage()
     msg["Subject"] = f"Interview Invitation: {job_role} at {company_name} ({branch_name})"
-    msg["From"] = smtp_user
+    msg["From"] = f"{company_name} via TechEval.ai <{smtp_user}>"
+    msg["Reply-To"] = hr_email
     msg["To"] = candidate_email
 
     html_content = f"""
@@ -219,10 +230,17 @@ def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_r
           <ul style="font-size: 14px; color: #cbd5e1; padding-left: 20px; margin-top: 5px;">
             <li><b>Assessment Type:</b> {interview_type} (AI-driven)</li>
             <li><b>Time Commitment:</b> Approximately {interview_duration} minutes</li>
-            <li><b>Core Topics:</b> {tech_stack}</li>
+            <li><b>Focus Area:</b> {focus_text}</li>
           </ul>
 
           <p style="font-size: 14px; color: #cbd5e1; margin-top: 20px;">Please ensure you complete this assessment no later than <b>{deadline_str}</b> to be considered for the current hiring cycle.</p>
+
+          <p style="font-size: 14px; color: #f8fafc; font-weight: bold; margin-top: 20px;">🚨 Strict Assessment Rules (Proctoring Enabled):</p>
+          <ul style="font-size: 14px; color: #cbd5e1; padding-left: 20px; margin-top: 5px;">
+            <li><b>Camera Monitoring:</b> You must remain visible on camera for the entire duration. Do not move away from the screen.</li>
+            <li><b>Browser Locking:</b> Do not switch tabs, minimize the browser, or exit the window. Tab switching is actively tracked.</li>
+            <li><b>AI & Cheating Detection:</b> Do not use external AI assistants (e.g., ChatGPT). Our AI engine actively analyzes speech patterns, response delays and conversational markers to detect AI-generated answers.</li>
+          </ul>
 
           <p style="font-size: 14px; color: #f8fafc; font-weight: bold; margin-top: 20px;">Preparation Checklist:</p>
           <ul style="font-size: 14px; color: #cbd5e1; padding-left: 20px; margin-top: 5px;">
@@ -246,7 +264,27 @@ def send_candidate_invite_email(candidate_email: str, candidate_name: str, job_r
     </html>
     """
 
-    plain_text = f"Dear {candidate_name},\n\nCongratulations on advancing to the next stage of our selection process for the {job_role} position.\n\nTo better understand your technical background and problem-solving skills, we invite you to complete a conversational AI-driven technical screening.\n\nFormat: {interview_type}\nCore Topics: {tech_stack}\nDuration: up to {interview_duration} minutes\n\nPlease complete it before: {deadline_str}\n\nLaunch Assessment here: {invite_link}\n\nSincerely,\nThe {company_name} Hiring Team"
+    plain_text = f"""Dear {candidate_name},
+
+Congratulations on advancing to the next stage of our selection process for the {job_role} position.
+
+To better understand your technical background and problem-solving skills, we invite you to complete a conversational AI-driven technical screening.
+
+Format: {interview_type}
+Focus Area: {focus_text}
+Duration: up to {interview_duration} minutes
+
+Please complete it before: {deadline_str}
+
+🚨 STRICT ASSESSMENT RULES (PROCTORING ENABLED):
+1. Camera Monitoring: You must remain visible on camera for the entire duration. Do not move away.
+2. Browser Locking: Do not switch tabs, minimize the browser, or exit the window.
+3. AI Detection: Do not use external AI assistants. Our system actively analyzes speech patterns to detect AI usage.
+
+Launch Assessment here: {invite_link}
+
+Sincerely,
+The {company_name} Hiring Team"""
 
     msg.set_content(plain_text)
     msg.add_alternative(html_content, subtype='html')
@@ -338,8 +376,18 @@ class PurchaseRequest(BaseModel):
 def create_razorpay_order(payload: PurchaseRequest, current_account: dict = Depends(get_current_account)):
     account_id = current_account["account_id"]
 
-    # Calculate amount in Paise (Razorpay expects the smallest currency unit)
-    amount_in_inr = payload.credit_amount * CREDIT_PRICE_INR
+    with engine.connect() as conn:
+        # Fetch the specific price for this branch
+        price_row = conn.execute(
+            text("SELECT credit_price FROM branch_accounts WHERE account_id = :aid"),
+            {"aid": account_id}
+        ).fetchone()
+
+        # Fallback to 150 if the column is null or missing
+        branch_price = price_row[0] if price_row and price_row[0] else 150
+
+    # Calculate amount in Paise based on the branch's specific price
+    amount_in_inr = payload.credit_amount * branch_price
     amount_in_paise = amount_in_inr * 100
 
     order_data = {
@@ -353,7 +401,6 @@ def create_razorpay_order(payload: PurchaseRequest, current_account: dict = Depe
     }
 
     try:
-        # Generate the order on Razorpay's servers
         razorpay_order = rzp_client.order.create(data=order_data)
         return {
             "order_id": razorpay_order["id"],
@@ -567,7 +614,7 @@ async def parse_resume(file: UploadFile = File(...), current_account: dict = Dep
 
     prompt = ChatPromptTemplate.from_messages([
         ("system",
-         "Extract the candidate's name, email, and phone number from the resume text. Return an empty string if a field is not found."),
+         "Extract the candidate's name, email and phone number from the resume text. Return an empty string if a field is not found."),
         ("user", "{resume_text}")
     ])
     structured_llm = llm.with_structured_output(ResumeParsedData)
@@ -657,6 +704,7 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
     account_id = current_account["account_id"]
     company_name = current_account["company_name"]
     branch_name = current_account["branch_name"]
+    hr_email = current_account["email"]
 
     with engine.connect() as conn:
         job = conn.execute(
@@ -732,6 +780,7 @@ def add_candidate_and_invite(job_id: str, payload: AddCandidateRequest,
         tech_stack=payload.tech_stack or "General Technical Evaluation",
         company_name=company_name,
         branch_name=branch_name,
+        hr_email=hr_email,
         invite_link=invite_link,
         deadline_hours=payload.deadline_hours  # Pass the dynamic deadline to the email generator
     )
@@ -970,7 +1019,7 @@ def download_transcript(candidate_id: str, current_account: dict = Depends(get_c
         disclaimer = (
             "DISCLAIMER: This transcript is RAW and UNEDITED. It is preserved exactly "
             "as captured by the Speech-to-Text engine to maintain the authenticity, "
-            "pacing, and phrasing of the candidate's live spoken responses. "
+            "pacing and phrasing of the candidate's live spoken responses. "
             "Grammar mistakes and transcription artifacts are expected and intentionally retained."
         )
         pdf.multi_cell(0, 6, disclaimer)
@@ -1055,4 +1104,4 @@ def delete_job(job_id: str, current_account: dict = Depends(get_current_account)
             {"aid": account_id, "jid": job_id}
         )
         conn.commit()
-    return {"message": "Job, candidates, and interview records successfully deleted."}
+    return {"message": "Job, candidates and interview records successfully deleted."}
